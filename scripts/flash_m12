@@ -1,0 +1,10 @@
+#!/bin/bash
+
+
+LIBMC1322X=../libmc1322x
+TOOLS=${LIBMC1322X}/tools
+FLASHER=${LIBMC1322X}/tests/flasher_m12.bin
+BBMC=${LIBMC1322X}/tools/ftditools/bbmc
+FIRMWARE=../ofldongle/ofldongle_m12.bin
+
+${TOOLS}/mc1322x-load.pl -t /dev/ttyUSB1  -f ${FLASHER} -s ${FIRMWARE}  -c "sudo ${BBMC} -l redbee-econotag erase; sudo ${BBMC}  -l redbee-econotag reset" -b 200
