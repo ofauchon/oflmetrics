@@ -1,6 +1,8 @@
 OFLmetrics
 ==========
 
+# Introduction
+
 This project provides code for running a simple network of sensors, based on MC1322x hardware (802.15.4 protocol)
 I love simple things, and I decide to write my own protocol, two years ago. Goals were: 
 
@@ -16,12 +18,13 @@ Since I don't have much time to spend on this project, I decided to publish it u
 
 Any contributers welcome ! 
 
+# Documentation 
 
 I'll try to write some more documentation soon. 
 
 
-Components 
-==========
+# Components 
+
 
 - OFLNode : The sensor firmware itself, it can reads or write from GPIOs, and send/receives frames from others.
 - OFLDongle : USB Stick to receive/send frames to/from OFLNodes (through serial port) 
