@@ -1,0 +1,10 @@
+OFLMetrics Project
+
+http://www.oflabs.com/projects/oflmetrics
+<Olivier Fauchon> olivier@oflabs.com
+
+
+Thanks to other projects, for the code I reused: 
+
+- Spark Fun / Nathan Seidle for lcd.[ch] (beerware license)
+
