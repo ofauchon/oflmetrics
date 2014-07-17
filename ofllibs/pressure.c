@@ -1,4 +1,3 @@
-#include "ds1820.h"
 /*
   H25K5A Resistance humidity sensor
 
@@ -8,6 +7,7 @@
   vo = vi * ( RT/ (RT + RH) )
   RT =
 */
+#include "ds1820.h"
 
 uint16_t MATRIX[] = {
 //0°   5°     10°    15°    20°    25°   30°   35°   40°   45°   50°
