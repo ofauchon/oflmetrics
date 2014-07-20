@@ -160,12 +160,13 @@ void process_cmd(char* cmd)
     // Help
     else if (strncmp(cmd,"?",1) ==0 )
     {
-        printf(":dump_hex Dump incoming packets as hex\r\n");
-        printf(":dump_human Dump incoming in readable parsable form\r\n");
-        printf(":dump_config         Dump current config\r\n");
-        printf(":channel XX          Set radio chan\r\n");
-        printf(":selftest_xtea           Test XTEA Encoding/Decoding\r\n");
-        printf(">MY_COMMAND          Send the command\r\n");
+        printf(":dump_hex        Dump incoming packets (hex form)\r\n");
+        printf(":dump_human      Dump incoming packets (human-readable)\r\n");
+        printf(":dump_config     Dump current config\r\n");
+        printf(":channel XX      Force radio channel to XX\r\n");
+        printf(":selftest_xtea   Test XTEA Encoding/Decoding\r\n");
+        printf(":info            Informations\r\n");
+        printf(":send MY_COMMAND      Send the command\r\n");
     }
     // Hexa dump
     else if (strstr(cmd,":dump_hex")) {
@@ -188,9 +189,9 @@ void process_cmd(char* cmd)
     else if ( strstr(cmd, ":dump_config")) {
             dump_config(myconfig);
     }
-    else if ( strlen(cmd) >0 && cmd[0]=='>'){
-        char* cmd2= (char*) (cmd+1);
-        printf("send command : '%s', size %d\r\n", cmd, strlen(cmd2));
+    else if ( strstr(cmd,":send ")){
+        char* cmd2= (char*) (cmd+6);
+        printf("TX : '%s', size %d\r\n", cmd, strlen(cmd2));
         p = get_free_packet();
         if (p != NULL ){
             paquet pq;
@@ -252,11 +253,8 @@ void main(void)
     monitor_mode=0;
 
     // Get config
-    printf("Reading NVRam configuration\r\n");
     uint8_t ret= read_config(&myconfig);
     if (ret!=1) { printf("   Failed, using defaults\r\n"); default_config(&myconfig); }
-
-
 
     memset(cmd_data,0,CMD_MAXLEN+1); // Zero the command buffer
 

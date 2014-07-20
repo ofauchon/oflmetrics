@@ -3,4 +3,9 @@ libmc1322x
 *.map
 *.bin
 obj_m12
+moc_*
+*.o
+*.so
+*.so.*
+oflbridge/oflbridge
 

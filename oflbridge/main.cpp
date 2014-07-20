@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     PacketProcessor *processor = new PacketProcessor(&config);
 
     // SERIAL THREAD
-    SerialDeviceThread *serial_thread = new SerialDeviceThread(config.serial_path, config.serial_speed);
+    SerialDeviceThread *serial_thread = new SerialDeviceThread(&config);
     serial_thread->start();
     QObject::connect(serial_thread, SIGNAL(broadcastPacket(Packet*)), processor, SLOT(insertPacket(Packet*)));
 

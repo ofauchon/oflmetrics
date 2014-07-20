@@ -1,14 +1,14 @@
 #include "serialdevicethread.h"
 
 #include <QtDebug>
+#include <config.h>
 
 
-SerialDeviceThread::SerialDeviceThread(QString pSerialPath, unsigned int pSerialSpeed)
+SerialDeviceThread::SerialDeviceThread(Config *pConfig)
 {
-    this->serial_path = pSerialPath;
-    this->serial_speed = pSerialSpeed;
+    this->myconfig = pConfig;
     this->state=0;
-    qDebug() << "SerialDeviceThread: Created on port ." << pSerialPath << " at speed " << pSerialSpeed;
+    qDebug() << "SerialDeviceThread: Created on port ." << myconfig->serial_path<< " at speed " << myconfig->serial_speed;
 
 }
 
@@ -22,9 +22,9 @@ void SerialDeviceThread::run(){
         {
         case 0:{
 
-            int ret = LS.Open("/dev/ttyUSB1" , 115200);
+            int ret = LS.Open(myconfig->serial_path.toStdString().c_str(),myconfig->serial_speed);
             if (ret!=1) {
-                qDebug("SerialDeviceThread: Can't open serial port %s, wait 3000ms", serial_path.toStdString().c_str());
+                qDebug("SerialDeviceThread: Can't open serial port %s, wait 3000ms", myconfig->serial_path.toStdString().c_str());
                 this->msleep(3000);
                 break;
             }
@@ -33,9 +33,9 @@ void SerialDeviceThread::run(){
             break;
         }
         case 1:{
-            qDebug() << "SerialDeviceThread: Switch to dump2 mode";
-            if (LS.WriteString(":dump2\n") <0){
-                qDebug() << "SerialDeviceThread: Can't send command dump2";
+            qDebug() << "SerialDeviceThread: Switch to dump mode";
+            if (LS.WriteString(":dump_hex\n") <0){
+                qDebug() << "SerialDeviceThread: Can't send command dump";
                 state=0;
             }
             state++;
