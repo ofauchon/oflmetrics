@@ -1,10 +1,16 @@
 #!/bin/bash
 
+[ "$1" == "-h" -o "$1" == "" ] && {
+echo "M12 Flasher: usage ./flash_m12 firmware.bin"
+exit 1
+}
 
-LIBMC1322X=../libmc1322x
-TOOLS=${LIBMC1322X}/tools
-FLASHER=${LIBMC1322X}/tests/flasher_m12.bin
-BBMC=${LIBMC1322X}/tools/ftditools/bbmc
-FIRMWARE=../ofldongle/ofldongle_m12.bin
-
-${TOOLS}/mc1322x-load.pl -t /dev/ttyUSB1  -f ${FLASHER} -s ${FIRMWARE}  -c "sudo ${BBMC} -l redbee-econotag erase; sudo ${BBMC}  -l redbee-econotag reset" -b 200
+[ "$1" != "" ] && {
+  LIBMC1322X=../libmc1322x
+  TOOLS=${LIBMC1322X}/tools
+  FLASHER=${LIBMC1322X}/tests/flasher_m12.bin
+  BBMC=${LIBMC1322X}/tools/ftditools/bbmc
+  #FIRMWARE=../ofldongle/ofldongle_m12.bin
+  FIRMWARE=$1
+  ${TOOLS}/mc1322x-load.pl -t /dev/ttyUSB1  -f ${FLASHER} -s ${FIRMWARE}  -c "sudo ${BBMC} -l redbee-econotag erase; sudo ${BBMC}  -l redbee-econotag reset" -b 200
+}
