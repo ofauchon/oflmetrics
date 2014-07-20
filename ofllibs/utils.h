@@ -17,7 +17,8 @@
 
 
 /*
-NVRAM @ offset 0x1f000
+Configuration ib NVR
+NVR @ offset 0x1f000
 
      smac    txpower radiochan capabilities  reserved       securekey (8)
 |-----------|   |         |           |       |             |--------------|
@@ -27,17 +28,15 @@ NVRAM @ offset 0x1f000
 
 /* PACKET STUFF */
 typedef struct {
-		uint8_t			signature[2];
+	uint8_t		signature[2];
         uint8_t         smac[4];
         uint8_t         txpower;
         uint8_t         radiochan;
         uint8_t         securekey[32];
         uint8_t         capa[2];
 
-        uint8_t 		low_uptime_flag; 
-        uint8_t 		low_uptime_counter; 
-
-
+        uint8_t 	low_uptime_flag;    // Flag used to detect fast OFF-ON-OFF of the board
+        uint8_t 	low_uptime_counter; // After a couple of ON/OFF/ON, we may reset to factory  
 } config_t;
 
 
@@ -53,6 +52,7 @@ uint16_t hexToInt(char* c, uint8_t len);
 int8_t read_config(config_t *t);
 int8_t write_config(config_t *t);
 void dump_config(config_t myconfig);
+void default_config(config_t *t);
 
 
 #endif

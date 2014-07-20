@@ -98,6 +98,23 @@ int8_t write_config(config_t *t)
         return 1; 
 }
 
+void default_config(config_t *myconfig)
+{
+	// Mac 0x01020304
+            myconfig->smac[0]=0x01;myconfig->smac[1]=0x02;myconfig->smac[2]=0x03;myconfig->smac[3]=0x04;
+	// Power 0x12
+            myconfig->txpower=0x12;
+	// Channel 0 
+            myconfig->radiochan=0x00;
+	// Capabilities 0xFFFF
+            myconfig->capa[0]=0xFF;myconfig->capa[1]=0xFF;
+	// Signature
+            myconfig->signature[0]=0xF0; myconfig->signature[1]=0x0F; 
+	// When 1: this means the board was tuned OFF ON OFF  in a short interval
+            myconfig->low_uptime_counter=0; 
+}
+
+
 
 /*
  *  TESTS NVM CONFIG

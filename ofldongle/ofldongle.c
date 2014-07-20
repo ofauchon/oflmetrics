@@ -218,7 +218,7 @@ void process_cmd(char* cmd)
 
 void init_hw(void)
 {
-    // Configure LED GPIOs
+    // Configure RED & GREEN LEDs GPIO
     setPinGpio(LED_RED_GPIO, GPIO_DIR_OUTPUT);
     setPinGpio(LED_GREEN_GPIO, GPIO_DIR_OUTPUT);
     gpio_data_set(1ULL<< LED_RED_GPIO);
@@ -233,16 +233,6 @@ void init_hw(void)
     maca_init();
     set_channel(myconfig.radiochan);
     set_power(myconfig.txpower);
-}
-
-void config_default_values(config_t *myconfig)
-{
-    myconfig->smac[0]=0x01;myconfig->smac[1]=0x02;myconfig->smac[2]=0x03;myconfig->smac[3]=0x04;
-    myconfig->txpower=0x12;
-    myconfig->radiochan=0x00;
-    myconfig->capa[0]=0xFF;myconfig->capa[1]=0xFF;
-    myconfig->signature[0]=0xF0; myconfig->signature[1]=0x0F; 
-    myconfig->low_uptime_counter=0; 
 }
 
 
@@ -264,7 +254,7 @@ void main(void)
     // Get config
     printf("Reading NVRam configuration\r\n");
     uint8_t ret= read_config(&myconfig);
-    if (ret!=1) { printf("   Failed, using defaults\r\n"); config_default_values(&myconfig); }
+    if (ret!=1) { printf("   Failed, using defaults\r\n"); default_config(&myconfig); }
 
 
 
@@ -290,6 +280,7 @@ void main(void)
         if(uart1_can_get())
         {
             char c = uart1_getc();
+            // Buffer full
             if (cmd_pos == CMD_MAXLEN) {
                 printf("Command too long\r\n");
                 cmd_pos=0;
