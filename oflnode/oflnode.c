@@ -33,11 +33,11 @@ You should have received a copy of the GNU General Public License
 
 config_t myconfig; 
 
-// Globals
+// Global variables
 volatile uint32_t cntr, cntr_msg_sent;
 volatile uint8_t clock_d,clock_h,clock_m,clock_s, clock_100ms;
 
-// Some vars
+// RX/TX paquet 
 paquet tx_paquet; 
 paquet rx_paquet;
 
@@ -55,23 +55,23 @@ void process_rx_packet(volatile packet_t *prx)
     DBG("Packet received.\r\n");
     if (prx->length >0 ){  
             paquet pqrx;
+            printf("RX:%s\r\n",pqrx.data);
             packet2paquet(prx, &pqrx);
 
-            // Traiement des commandes
-            char rep[100];
-            memset(rep,0,sizeof(rep));
-            printf("RX:%s\r\n",pqrx.data);
+            // FIXME : hardcoded size of 100 below
+            char data[100];
+            memset(data,0,sizeof(data));
             int n;
             paquet pqtx; 
             if ( (n = strncmp((char*)pqrx.data,"PING",pqrx.datalen))  ){
                 sprintf((char*)pqtx.data,"PONG");
             }
-            // Copy SMAC from config
-            memcpy(pqtx.smac, myconfig.smac,4);
-            pqtx.dmac[0] = pqrx.smac[0]; pqtx.dmac[1] = pqrx.smac[1]; pqtx.dmac[2] = pqrx.smac[2]; pqtx.dmac[3] = pqrx.smac[3];
-            memcpy(rep, pqtx.data,strlen(rep));
-            pqtx.datalen=strlen(rep);
+            memcpy(pqtx.smac, myconfig.smac,4); // set smac based on config source mac
+	    memcpy(pqtx.dmac, pqrx.smac,4);     // set dmac based on rx packet smac
+            memcpy(pqtx.data,data, strlen(data)); //  copy payload to paquet
+            pqtx.datalen=strlen(data); // Set payload size
 
+	    // convert paquet to libmc1322x struct packet, and send it
             volatile packet_t *ptx;
             ptx=get_free_packet();
             paquet2packet(&pqtx,ptx);
@@ -144,7 +144,7 @@ void timers_init(void)
 
 
 /*
- * Boucle delai
+ *  100ms sleep 
  */
 void wait100ms(uint32_t delta){
     uint32_t oldc = cntr;
@@ -270,7 +270,7 @@ void main(void) {
 
     // UART
     if (DODEBUG) uart_init(UART1, SERIAL_SPEED);
-    DBG("OFLSensor start\r\n");
+    DBG("OFLnode start\r\n");
 
     // uController init
     trim_xtal();
@@ -278,34 +278,38 @@ void main(void) {
 
     state_init=0; 
 
-    // Get config
+    // Read config from NVR if possible
     int res;
     res=read_config(&myconfig);
-    if ( res < 0) {
+    if ( res < 0) { // Problem reading configuration
         DBG("read_config NOT OK : err:%d , using defaults\r\n", res);
-        if ( res == -3){
-            myconfig.smac[0]=0x01;myconfig.smac[1]=0x02;myconfig.smac[2]=0x03;myconfig.smac[3]=0x04;
-            myconfig.txpower=0x12;
-            myconfig.radiochan=0x00;
-            myconfig.capa[0]=0xFF;myconfig.capa[1]=0xFF;
-            myconfig.signature[0]=0xF0; myconfig.signature[1]=0x0F; 
-            myconfig.low_uptime_counter=0; 
+        if ( res == -3){ // No configuration signature in NVR
+	    default_config(&myconfig);
         }
     }
-    if (myconfig.low_uptime_flag==0x01){  // NVM tells us the previous runtime was low ... 
-        myconfig.low_uptime_counter++;   
-        if (myconfig.low_uptime_counter> RESET_REBOOT_COUNT) state_init=1; 
-    } else  
-        myconfig.low_uptime_counter=0;   // Reset counter
 
-    dump_config(myconfig);
+    // Ugly part of the boot process : Detecting reset to factory
+    if (myconfig.low_uptime_flag==0x01){  // NVM tells us the previous runtime was short ... 
+        myconfig.low_uptime_counter++;   
+        if (myconfig.low_uptime_counter> RESET_REBOOT_COUNT) state_init=1;  // Too much ON/OFF/ON/OFF short cycles, we enter init state
+    } else  {
+        myconfig.low_uptime_counter=0;   // The device 
+    }
+
 
     if(state_init==0){ // Update counters only if not already in init mode
+	int z; 
+	for (z=0;z<20;z++){ // Blink 20x to notify for NVR config reset
+            digitalWrite(RX_LED_PIN, 1); wait100ms(2);
+            digitalWrite(RX_LED_PIN, 0); wait100ms(2);
+	}
         myconfig.low_uptime_flag=0x1;
         res=write_config(&myconfig);
-    }else 
-        DBG ("****INIT MODE !!!");
+    }else { 
+        DBG ("Reset configuration and write to NVR");
+    }
 
+    dump_config(myconfig);
 
 
 
@@ -315,35 +319,33 @@ void main(void) {
     // Init Radio
     DBG("Init radio\r\n");
     maca_init();
-    set_channel(DEFAULT_RADIOCHANNEL);
-    set_power(DEFAULT_RADIOPOWER);
-    //maca_off();
+    set_channel(myconfig.radiochan);
+    set_power(myconfig.txpower);
 
     //RX TX LED
     setPinGpio(RX_LED_PIN, GPIO_DIR_OUTPUT);
     setPinGpio(TX_LED_PIN, GPIO_DIR_OUTPUT);
 
-    // Init sensors
+    // Init sensors depending on configuration
     if ( ( myconfig.capa[0] | CAPA_TEMP  )   ) ds1820_start();
     if ( ( myconfig.capa[0] | CAPA_LIGHT  )   )   adc_init();
     if ( ( myconfig.capa[0] | CAPA_POWER )  ) adc_init();
 
-
-
     maca_on();
 
+    // Main loop
     while(1){
-        DBG("Cycle #%u\r\n",(unsigned int) cntr);
+        DBG("Main loop cycle #%u\r\n",(unsigned int) cntr);
 
-        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE);
+        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer
+
         // Add battery information every 10 cycles
         if ( (cntr_msg_sent % 10 ) == 0 ){
             uint16_t t_batl= batteryLevel();
             sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;BATLEV:%u;", FW_VER, t_batl  );
         }
 
-
-        // This node is TEMPERATURE CAPABLE
+        // Add temperature information if node has capability
         if ( myconfig.capa[0] | CAPA_TEMP ) {
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
             if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac) == 1){
@@ -353,7 +355,7 @@ void main(void) {
             }
         }
 
-        // This node is LIGHT CAPABLE
+        // Add light level information if node has capability
         if ( myconfig.capa[0] | CAPA_LIGHT ) {
             uint16_t m_lumi;
             if (get_lumi(&m_lumi) == 1){
@@ -361,7 +363,7 @@ void main(void) {
             }
         }
 
-        // THIS NODE IS POWER CAPABLE
+        // Add power information if node has capability
         if ( myconfig.capa[0] | CAPA_POWER ) {
             uint16_t m_power;
             if ( get_power(&m_power) == 1 ){
@@ -369,7 +371,6 @@ void main(void) {
 
             }
         }
-
  
         // Compute data length
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
@@ -392,9 +393,7 @@ void main(void) {
             free_packet(rxp);
         }
 
-        // Send datas
-        //maca_on();
-        //wait100ms(2); // wait for maca to get ready
+        // Send packet data
         txp = get_free_packet();
         if (txp == NULL) {
             DBG("No radio free_packets...\r\n");
@@ -408,15 +407,14 @@ void main(void) {
             }
         }
 
-
+	// If 200 main cycles were executed, clear low uptime flag in NVR
         if (myconfig.low_uptime_flag==0x01 &&  cntr > 200 ){
             DBG("Clean low_uptime_counter flag\r\n");
             myconfig.low_uptime_flag=0x00; 
             write_config(&myconfig);
         }
-        // Power off radio
-        //maca_off();
-        // Reset every 10h
+
+        // Reset every 10h to avoid freeze bug
         if (cntr_msg_sent>600) reset_watchdog();
 
 noprocess:
@@ -425,13 +423,10 @@ noprocess:
         wait100ms(2);
         digitalWrite(RX_LED_PIN, 0);
 
+// We can either use powersave functions, or sleep.
 #ifdef HIBERNATE
-        // Au dodo
-        //DBG("Sleep Hibernate(%d)\r\n", HIBERNATE_DELAY);wait100ms(2);
         hibernate(HIBERNATE_DELAY);wait100ms(2);
-        //DBG("Wake up\r\n");
 #else
-        //DBG("Hibernate Wait100ms(%d)\r\n", HIBERNATE_DELAY);wait100ms(2);
         wait100ms(HIBERNATE_DELAY * 10);
 #endif
 
