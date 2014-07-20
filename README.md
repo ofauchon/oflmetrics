@@ -39,8 +39,9 @@ Please visit http://redwirellc.com to order
 # Components 
 
 
-- OFLNode : The sensor firmware itself, it can reads or write from GPIOs, and send/receives frames from others.
-- OFLDongle : USB Stick to receive/send frames to/from OFLNodes (through serial port) 
+- oflnode   : The sensor firmware itself, it can reads or write from GPIOs, and send/receives frames from others.
+- ofldongle : USB Stick to receive/send frames to/from OFLNodes (through serial port) 
+- oflbridge : Communication daemon with ofldongle, to multiple backends (xpl, mysql)
 
 
 # Notes
