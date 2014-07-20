@@ -1,1 +1,6 @@
 libmc1322x
+*.elf
+*.map
+*.bin
+obj_m12
+
