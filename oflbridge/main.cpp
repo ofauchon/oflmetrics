@@ -30,20 +30,20 @@ typedef struct {
 
 
 void help(void){
-    printf ("-OFLbridge\n\n");
-    printf ("\n");
-    printf ("Global options-d\n\n");
+    printf ("Usage:\n");
+    printf ("oflbridge [OPTIONS...]\n\n");
+    printf ("Globals\n");
     printf (" -d\n\n");
     printf ("-h this help message\n");
     printf ("  -s Serial port speed  (default 115200)\n");
     printf ("  -p Serial port device (default /dev/ttyUSB0)\n");
-    printf ("  -t 5050\n");
+    printf ("  -t TCP server port (default:5050)\n");
     printf ("\n");
     printf ("MySQL backend:e\n");
     printf ("  -D Database name\n");
     printf ("  -H Database host\n");
     printf ("  -U Database user\n");
-    printf ("  -P Database host\n\n");
+    printf ("  -P Database port\n\n");
 }
 
 void parseArgs(QCoreApplication *qApplication, Config *qConfig)
@@ -56,6 +56,18 @@ void parseArgs(QCoreApplication *qApplication, Config *qConfig)
         help();
         exit(0);
     }
+
+    qConfig->db_database="oflbridge";
+    qConfig->db_enable=false;
+    qConfig->db_user="";
+    qConfig->db_pass="";
+    qConfig->db_host="localhost";
+    qConfig->debug_level=0;
+    qConfig->log_enable=false;
+    qConfig->log_file="./oflbridge.log";
+    qConfig->tcpserver_enable=false;
+    qConfig->tcpserver_port=5050;
+
 
     for ( int i = 0; i < num; i++ ) {
         QString s = qApplication->arguments()[i] ;
@@ -78,21 +90,24 @@ void parseArgs(QCoreApplication *qApplication, Config *qConfig)
             qConfig->tcpserver_port = qApplication->arguments()[i+1].toInt();
         }
         else if ( s.startsWith( "-D" ) && i < num) {
+            qConfig->db_enable=true;
             qConfig->db_database = qApplication->arguments()[i+1];
         }
         else if ( s.startsWith( "-H" ) && i < num) {
+            qConfig->db_enable=true;
             qConfig->db_host = qApplication->arguments()[i+1];
         }
         else if ( s.startsWith( "-U" ) && i < num) {
+            qConfig->db_enable=true;
             qConfig->db_user = qApplication->arguments()[i+1];
         }
         else if ( s.startsWith( "-P" ) && i < num) {
+                        qConfig->db_enable=true;
             qConfig->db_pass = qApplication->arguments()[i+1];
         }
-
         // Seria port path
         else if ( s.startsWith( "-p" ) && i < num) {
-            qConfig->serial_path = QString(qApplication->arguments()[i+1]);
+            qConfig->serial_path = qApplication->arguments()[i+1];
         }
         else if ( s.startsWith( "-h" ) ) {
             help();
@@ -102,17 +117,17 @@ void parseArgs(QCoreApplication *qApplication, Config *qConfig)
     }
 
     if (qConfig->serial_speed==0 ) qConfig->serial_speed=115200;
-    if (qConfig->serial_path.length()==0) qConfig->serial_path=QString("/dev/ttyUSB0");
+    if (qConfig->serial_path.length()==0) qConfig->serial_path=QString("/dev/ttyUSB1");
 
     if (qConfig->log_enable) qDebug() << "Log file: " << qConfig->log_file;
-    if (qConfig->debug_level) qDebug() << "Debug enabled";
-    if (qConfig->serial_speed>0) qDebug() << "Serial:" << qConfig->serial_path << ":" << qConfig->serial_speed;
     if (qConfig->tcpserver_enable) qDebug() << "Tcpserver Enabled on port :" << qConfig->tcpserver_port;
     if (qConfig->db_database.length() && qConfig->db_host.length() && qConfig->db_user.length() && qConfig->db_pass.length()){
         qConfig->db_enable = true;
     }
-    qDebug("DB Enabled : host:%s user:%s database:%s",
-           qPrintable(qConfig->db_host), qPrintable(qConfig->db_user), qPrintable(qConfig->db_database));
+    qDebug("Config\n  Serial %s at %u\n  DB: enabled:%u host:%s user:%s database:%s\n  Tcpserver: enabled:%u port: %u",
+           qPrintable(qConfig->serial_path) , qConfig->serial_speed,
+           qConfig->db_enable, qPrintable(qConfig->db_host), qPrintable(qConfig->db_user), qPrintable(qConfig->db_database),
+           qConfig->tcpserver_enable,qConfig->tcpserver_port);
 
 
 }
@@ -133,6 +148,8 @@ int main(int argc, char *argv[])
     // SERIAL THREAD
     SerialDeviceThread *serial_thread = new SerialDeviceThread(&config);
     serial_thread->start();
+
+    // Signal connections
     QObject::connect(serial_thread, SIGNAL(broadcastPacket(Packet*)), processor, SLOT(insertPacket(Packet*)));
 
 

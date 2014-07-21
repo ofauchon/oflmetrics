@@ -171,7 +171,7 @@ void process_cmd(char* cmd)
     // Hexa dump
     else if (strstr(cmd,":dump_hex")) {
         monitor_mode=DUMP_HEX;
-        printf("dump_hex enabled. any key to stop\r\n");
+        printf("OK dump_hex enabled. any key to stop\r\n");
     }
     // Human dump 
     else if (strstr(cmd,":dump_human")) {

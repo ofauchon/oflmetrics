@@ -33,9 +33,9 @@ void SerialDeviceThread::run(){
             break;
         }
         case 1:{
-            qDebug() << "SerialDeviceThread: Switch to dump mode";
+            qDebug() << "SerialDeviceThread: Switch to dump_hex mode";
             if (LS.WriteString(":dump_hex\n") <0){
-                qDebug() << "SerialDeviceThread: Can't send command dump";
+                qDebug() << "SerialDeviceThread:state=1: Can't send command dump_hex";
                 state=0;
             }
             state++;
@@ -44,8 +44,17 @@ void SerialDeviceThread::run(){
         case 2:{
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret=LS.ReadString(rx_buf,'\n',128,50);
+            if (ret>0) qDebug("SerialDeviceThread:state=2: Reading %d bytes '%s'", ret, rx_buf);
+            if ( strlen(rx_buf)>11 && strstr(rx_buf,"OK dump_hex")){
+                state=3;
+            }
+        }
+        case 3:{
+            memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
+            int ret=LS.ReadString(rx_buf,'\n',128,50);
+            //            if (ret>0) qDebug("SerialDeviceThread:state=3: Reading %d bytes '%s'", ret, rx_buf);
             if (ret>1 && rx_buf[0] == '>'){
-                //qDebug("SerialDeviceThread: Reading %d bytes '%s'", ret, rx_buf);
+                qDebug("SerialDeviceThread:state=3: Processing command '%s'", rx_buf);
                 Packet *p = new Packet(rx_buf+1);
                 emit broadcastPacket(p);
             }
