@@ -11,15 +11,15 @@ Since I don't have much free time at the moment, I decided to publish it under o
 Initial goals:
 
 
-- Lightweight code (Not an OS: No tasks, processes, threads... just a main loop)
+- Lightweight code (Not an OS: No tasks, processes, threads... just a main loop, and a couple of timers)
 - Simple protocol (No TCP/IP things, just some raw bytes . Back to basics)
-- Simple meshing (At the moment, routing over a a couple of nodes is enough for me)
-- Basic security (eg: encryption ... ) 
+- Simple meshing (Routing over a a couple of nodes is enough for me) => Work in progress
+- Some security (eg: XTEA encryption ... ) 
 - Low power (Should operate properly on batteries)
 
 Current status: 
 
-- oflnode can read temperature,light,power(wip) sensors, and send messages through radio, and wake_up/sleep to save power
+- oflnode can read temperature,light sensors, and send messages through radio, and wake_up/sleep to save power
 - ofldongle can listen to oflnode radio frames, and display/decode them on the serial port 
 - oflbridge is a Qt daemon that turns on ofldongle monitor mode, decodes frames, and store them in MySQL server
 
