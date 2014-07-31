@@ -33,13 +33,13 @@ I'll try to write some detailed documentation soon.
 
   * OFLnode 
 
-![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode01.png =x150)
-![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode02.png =x150)
-![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode03.png =x150)
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode01.png =150x)
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode02.png =150x)
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode03.png =150x)
 
   * OFLbridge
 
-![OFLbridge hardware](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/bridge01.png =x150)
+![OFLbridge hardware](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/bridge01.png =150x)
 ![OFLbridge monitor mode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/ofldongle_monitor_mode.png)
 
 
