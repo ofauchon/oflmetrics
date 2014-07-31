@@ -36,7 +36,7 @@ void help(void){
     printf (" -d\n\n");
     printf ("-h this help message\n");
     printf ("  -s Serial port speed  (default 115200)\n");
-    printf ("  -p Serial port device (default /dev/ttyUSB0)\n");
+    printf ("  -p Serial port device (default /dev/ttyUSB1)\n");
     printf ("  -t TCP server port (default:5050)\n");
     printf ("\n");
     printf ("MySQL backend:e\n");
@@ -59,7 +59,7 @@ void parseArgs(QCoreApplication *qApplication, Config *qConfig)
 
     qConfig->db_database="oflbridge";
     qConfig->db_enable=false;
-    qConfig->db_user="";
+    qConfig->db_user="root";
     qConfig->db_pass="";
     qConfig->db_host="localhost";
     qConfig->debug_level=0;
@@ -124,6 +124,8 @@ void parseArgs(QCoreApplication *qApplication, Config *qConfig)
     if (qConfig->db_database.length() && qConfig->db_host.length() && qConfig->db_user.length() && qConfig->db_pass.length()){
         qConfig->db_enable = true;
     }
+    if (qConfig->db_user.length()==0) qConfig->db_user=QString("root");
+
     qDebug("Config\n  Serial %s at %u\n  DB: enabled:%u host:%s user:%s database:%s\n  Tcpserver: enabled:%u port: %u",
            qPrintable(qConfig->serial_path) , qConfig->serial_speed,
            qConfig->db_enable, qPrintable(qConfig->db_host), qPrintable(qConfig->db_user), qPrintable(qConfig->db_database),

@@ -47,6 +47,8 @@ void SerialDeviceThread::run(){
             if (ret>0) qDebug("SerialDeviceThread:state=2: Reading %d bytes '%s'", ret, rx_buf);
             if ( strlen(rx_buf)>11 && strstr(rx_buf,"OK dump_hex")){
                 state=3;
+            } else if ( strlen(rx_buf)>=9 && strstr(rx_buf,":dump_hex")){ // OLD PROTOCOL
+                state=3;
             }
         }
         case 3:{

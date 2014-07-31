@@ -4,14 +4,14 @@ OFLmetrics
 # Introduction
 
 This project provides code for running a simple network of sensors, based on MC1322x hardware (802.15.4 protocol)
-I love simple things, and I decide to write my own protocol, two years ago. 
+I love simple things, so it's very low level ( Have a look at Contiki if you want an embedded OS )
 
 Since I don't have much free time at the moment, I decided to publish it under open-source GPL licence.
 
 Initial goals:
 
 
-- Lightweight (No tasks, processes, threads... just a main loop)
+- Lightweight code (Not an OS: No tasks, processes, threads... just a main loop)
 - Simple protocol (No TCP/IP things, just some raw bytes . Back to basics)
 - Simple meshing (At the moment, routing over a a couple of nodes is enough for me)
 - Basic security (eg: encryption ... ) 
@@ -19,12 +19,11 @@ Initial goals:
 
 Current status: 
 
-- OFLNode can read temperature sensors, and send messages, and wake_up/sleep
-- OFLDongle can listen to OFLNode frames, and display/decode them on the serial port. 
+- oflnode can read temperature,light,power(wip) sensors, and send messages through radio, and wake_up/sleep to save power
+- ofldongle can listen to oflnode radio frames, and display/decode them on the serial port 
+- oflbridge is a Qt daemon that turns on ofldongle monitor mode, decodes frames, and store them in MySQL server
 
-
-
-Please come and contribute ! 
+Please come aboard and contribute ! 
 
 # Documentation 
 
