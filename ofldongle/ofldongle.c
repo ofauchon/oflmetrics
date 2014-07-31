@@ -84,7 +84,7 @@ void selftest_xtea(void)
 void dump_human(volatile packet_t *p, paquet *pk) 
 { 
     p=p;
-    printf(">>> %02X%02X%02X%02X|%02X%02X%02X%02X|%02X|%s|\r\n",
+    printf("RX: %02X%02X%02X%02X|%02X%02X%02X%02X|%02X|%s|\r\n",
            pk->smac[0],pk->smac[1],pk->smac[2],pk->smac[3],
            pk->dmac[0],pk->dmac[1],pk->dmac[2],pk->dmac[3],
            pk->datalen, pk->data);
@@ -99,7 +99,7 @@ void dump_hex(volatile packet_t *p, paquet *pk)
      #define PER_ROW 16
     char sss[PER_ROW+1];
     if(p) {
-        printf(">>> len=0x%02x(%d) lqi=0x%02x(%d) rx_time=0x%08x(%d) smac=%02X%02X%02X%02X dmac=%02X%02X%02X%02X len=%d\r\n",
+        printf("RX: len=0x%02x(%d) lqi=0x%02x(%d) rx_time=0x%08x(%d) smac=%02X%02X%02X%02X dmac=%02X%02X%02X%02X len=%d\r\n",
                p->length,p->length, p->lqi,p->lqi, (int)p->rx_time, (int)p->rx_time,
                pk->smac[0],pk->smac[1],pk->smac[2],pk->smac[3],
                pk->dmac[0],pk->dmac[1],pk->dmac[2],pk->dmac[3],
@@ -171,22 +171,24 @@ void process_cmd(char* cmd)
     // Hexa dump
     else if (strstr(cmd,":dump_hex")) {
         monitor_mode=DUMP_HEX;
-        printf("OK dump_hex enabled. any key to stop\r\n");
+        printf("OK dump_hex mode <press any key to stop>\r\n");
     }
     // Human dump 
     else if (strstr(cmd,":dump_human")) {
         monitor_mode=DUMP_HUMAN;
-        printf("dump_human enabled. any key to stop\r\n");
+        printf("OK dump_human mode <press any key to stop>\r\n");
     }
     else if ( strstr(cmd, ":channel ") && strlen(cmd) > 9 ) {
         int ch = atoi (cmd+9);
         set_channel(ch); /* channel 11 */
-        printf("radio chan now : %d", ch);
+        printf("OK channel set to %d", ch);
     }
     else if ( strstr(cmd, ":selftest_xtea")) {
+        printf("OK running selftest_xtea\r\n");
             selftest_xtea();
     }
     else if ( strstr(cmd, ":dump_config")) {
+        printf("OK dumping configuration\r\n");
             dump_config(myconfig);
     }
     else if ( strstr(cmd,":send ")){
@@ -211,6 +213,8 @@ void process_cmd(char* cmd)
         }
 
 
+    } else {
+	printf("ERROR: Unknown command\r\n");
     }
 
 }

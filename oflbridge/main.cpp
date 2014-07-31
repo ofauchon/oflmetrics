@@ -37,7 +37,7 @@ void help(void){
     printf ("-h this help message\n");
     printf ("  -s Serial port speed  (default 115200)\n");
     printf ("  -p Serial port device (default /dev/ttyUSB1)\n");
-    printf ("  -t TCP server port (default:5050)\n");
+    printf ("  -t <port no> TCP server port (default:5050)\n");
     printf ("\n");
     printf ("MySQL backend:e\n");
     printf ("  -D Database name\n");
@@ -152,12 +152,14 @@ int main(int argc, char *argv[])
     serial_thread->start();
 
     // Signal connections
-    QObject::connect(serial_thread, SIGNAL(broadcastPacket(Packet*)), processor, SLOT(insertPacket(Packet*)));
-
+    if (config.db_enable){
+        QObject::connect(serial_thread, SIGNAL(broadcastPacket(Packet*)), processor, SLOT(insertPacket(Packet*)));
+    }
 
     // TCP SERVER
     if (config.tcpserver_enable){
         TcpServer *server = new TcpServer(processor);
+
         if ( !server->listen(QHostAddress::LocalHost, config.tcpserver_port) ){
             qDebug() << "Main: Server can't bind on port TCP" << config.tcpserver_port;
             return(-1);
