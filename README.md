@@ -39,7 +39,7 @@ I'll try to write some detailed documentation soon.
 
   * OFLbridge
 
-![OFLbridge hardware](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/bridge01.png)
+![OFLbridge hardware](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflbridge01.png)
 ![OFLbridge monitor mode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/ofldongle_monitor_mode.png)
 
 
