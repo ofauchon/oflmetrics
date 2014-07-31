@@ -31,7 +31,13 @@ I'll try to write some detailed documentation soon.
 
 # OFLMetrics in action 
 
-  * OFLbridge in action 
+  * OFLnode 
+
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode01.png)
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode02.png)
+![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode03.png)
+
+  * OFLbridge
 
 ![OFLbridge in action](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/ofldongle_monitor_mode.png)
 
