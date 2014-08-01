@@ -290,7 +290,7 @@ void main(void)
             }
             // New line received, process the command
             else if (c == 0x0D || c == 0x0A) {
-                printf("%c",c);
+                printf("\r\n");
                 process_cmd(cmd_data);
                 cmd_pos=0;
                 memset(cmd_data,0,CMD_MAXLEN);
