@@ -104,12 +104,13 @@ void SerialDeviceThread::run(){
             break;
         }
         case 3:{
+            //oDebug("State 3, Listening node's message");
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret= this->readString(rx_buf,'\n');
             if (ret>1) {
                 if (rx_buf[0] == 'R' && rx_buf[1] == 'X'){
                // oDebug("Receiving data '%s'", rx_buf);
-                Packet *p = new Packet(rx_buf+1);
+                Packet *p = new Packet(rx_buf+4);
                 emit broadcastPacket(p);
                 }
             }
