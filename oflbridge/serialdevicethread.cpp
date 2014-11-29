@@ -110,7 +110,8 @@ void SerialDeviceThread::run(){
             if (ret>1) {
                 if (rx_buf[0] == 'R' && rx_buf[1] == 'X'){
                // oDebug("Receiving data '%s'", rx_buf);
-                Packet *p = new Packet(rx_buf+4);
+                Packet *p = new Packet();
+                p->initialize(rx_buf+4);
                 emit broadcastPacket(p);
                 }
             }

@@ -4,11 +4,20 @@ Config::Config()
 {
 
     debug_level=0;
-    log_enable=false;
+
     log_file="";
+
     serial_speed=0;
     serial_path="";
-    tcpserver_enable=false;
+
     tcpserver_port=5050;
-    db_enable=false;
+
+    statsd_host="";
+    statsd_port=0;
+
+    db_port=0;
+    db_user="";
+    db_pass="";
+    db_host="";
+    db_database="";
 }
