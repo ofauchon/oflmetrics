@@ -25,7 +25,8 @@ SOURCES += serialib.cpp main.cpp \
     serialdevicethread.cpp \
     packetprocessor.cpp \
     packet.cpp \
-    config.cpp
+    config.cpp \
+    xplmanager.cpp
 
 OTHER_FILES +=
 
@@ -33,7 +34,7 @@ HEADERS += \
     tcpserver.h \
     serverthread.h \
     serialdevicethread.h \
-    tcpserver.h \
     packetprocessor.h \
     packet.h \
-    config.h
+    config.h \
+    xplmanager.h
