@@ -26,20 +26,20 @@ PacketProcessor::PacketProcessor(Config *qConfig)
 
 }
 
-void PacketProcessor::influx_sendmetric(QString node, QString temp)
+void PacketProcessor::influx_sendmetric(QString node, QString type, QString temp)
 {
-    QByteArray jsonString = QString(tr("[{\"name\":\".gauge\",\"columns\":[\"value\"],\"points\":[[]]}]")).arg(node).arg(temp).toLatin1();
+    QByteArray jsonString = QString(tr("[{\"name\":\"%1.%2.gauge\",\"columns\":[\"value\"],\"points\":[[%3]]}]")).arg(node).arg(type).arg(temp).toLatin1();
     qDebug("PacketProcessor:: InfluxDb json message: '%s'", qPrintable(jsonString));
 
     QByteArray postDataSize = QByteArray::number(jsonString.size());
 
-    QUrl req("'http://localhost:8086/db/metrics/series?u=olivier&p=ire3wvq8");
+    QUrl req(config->influxdb_url);
     QNetworkRequest request(req);
     request.setRawHeader("Content-Type", "application/json");
     request.setRawHeader("Content-Length", postDataSize);
 
-    QNetworkAccessManager nam;
-    QNetworkReply * reply = nam.post( request, jsonString);
+    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
+    QNetworkReply * reply = nam->post( request, jsonString);
 }
 
 
@@ -55,15 +55,17 @@ void PacketProcessor::insertPacket(Packet *p)
     int pos=0;
 
     while ((pos = re.indexIn(p->msg, pos)) != -1) {
-            QString cap_type = re.cap(1).toLower();
-            QString cap_val = re.cap(2);
-            message+= QString(tr("sensor_%1_%2:0|g\n")).arg(p->src_node_id).arg(cap_type);
-            message+= QString(tr("sensor_%1_%2:%3|g\n")).arg(p->src_node_id).arg(cap_type).arg(cap_val);
 
-            if (config->influxdb_url != "" ) influx_sendmetric(p->src_node_id, cap_val);
+        QString cap_type = re.cap(1).toLower();
+        QString cap_val = re.cap(2);
+        qDebug(QString("PacketProcessor: Found message : ID:%1 TYPE:%2 VALUE:%3").arg(p->dst_node_id).arg(cap_type).arg(cap_val).toStdString().c_str() );
 
+        message+= QString(tr("sensor_%1_%2:0|g\n")).arg(p->src_node_id).arg(cap_type);
+        message+= QString(tr("sensor_%1_%2:%3|g\n")).arg(p->src_node_id).arg(cap_type).arg(cap_val);
 
-            pos += re.matchedLength();
+        if (config->influxdb_url != "" ) influx_sendmetric(p->src_node_id, cap_type, cap_val);
+
+        pos += re.matchedLength();
 
     }
 
@@ -95,3 +97,8 @@ void PacketProcessor::insertPacket(Packet *p)
     */
 }
 
+
+
+void PacketProcessor::autotest(){
+    this->influx_sendmetric("sensor_0000001", "temp", "23.107");
+}
