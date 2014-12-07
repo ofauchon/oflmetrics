@@ -48,15 +48,22 @@ int main(int argc, char *argv[])
     parser.addHelpOption(); // Standard -h / --help options.
     parser.addVersionOption(); // Standard -v / --version options.
 
-    QCommandLineOption serialportOption(QStringList() << "s" << "serial-port", QCoreApplication::translate("main", "Dongle serial port (/dev/ttyXXX@speed)."), QCoreApplication::translate("main", "serial port"), "/dev/ttyUSB0@115200");
+    QCommandLineOption serialportOption(QStringList() << "s" << "serial_port", QCoreApplication::translate("main", "Dongle serial port"), QCoreApplication::translate("main", "/dev/ttyXXX@speed"));
     parser.addOption(serialportOption);
-    QCommandLineOption tcpportOption(QStringList() << "p" << "tcp-port", QCoreApplication::translate("main", "Enable TCP Server port."), QCoreApplication::translate("main", "tcp port"), "0");
+
+    QCommandLineOption tcpportOption(QStringList() << "p" << "tcp_port", QCoreApplication::translate("main", "Enable TCP Server port."), QCoreApplication::translate("main", "0-65535"));
     parser.addOption(tcpportOption);
-    QCommandLineOption statsdOption(QStringList() << "S" << "statsd-host", QCoreApplication::translate("main", "Send statsd messages."), QCoreApplication::translate("main", "statsd host"), "");
+
+    QCommandLineOption statsdOption(QStringList() << "S" << "statsd_destination", QCoreApplication::translate("main", "Send metrics to statsd server."), QCoreApplication::translate("main", "statsd host"));
     parser.addOption(statsdOption);
-    QCommandLineOption logOption(   QStringList() << "l" << "log-file",    QCoreApplication::translate("main", "Log file (./oflmetrics.log)"), QCoreApplication::translate("main", "logfile"), "./oflmetrics.log");
+
+    QCommandLineOption logOption(   QStringList() << "l" << "logfile",    QCoreApplication::translate("main", "Log file (./oflmetrics.log)"), QCoreApplication::translate("main", "logfile"));
     parser.addOption(logOption);
-    QCommandLineOption sqlOption(   QStringList() << "m" << "mysql-connection",    QCoreApplication::translate("main", "MySQL (user@server:port:db"), QCoreApplication::translate("main", "mysql connection"), "");
+
+    QCommandLineOption influxdbOption(   QStringList() << "i" << "influxdb_destination",    QCoreApplication::translate("main", "Sends metric to InfluxDB server (ttp://influxdb-server:8083/db/mydatabase/series?u={user}&p={pass})"), QCoreApplication::translate("main", "influxdb url"));
+    parser.addOption(influxdbOption);
+
+    QCommandLineOption sqlOption(   QStringList() << "m" << "mysql-connection",    QCoreApplication::translate("main", "MySQL (user@server:port:db"), QCoreApplication::translate("main", "mysql connection"));
     parser.addOption(sqlOption);
 
     parser.process(app);
@@ -64,16 +71,8 @@ int main(int argc, char *argv[])
     const QStringList args = parser.positionalArguments();
 
     // Check that format is a number between 1 and 4.
-  /*
-    config.tcpserver_port= parser.value(tcpportOption).toInt();
-    if (config.tcpserver_port < 1 ) {
-        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: TCP Port must be greater than 0 ")));
-        parser.showHelp(1);
-    }
-*/
 
-
-    if (parser.isSet(serialportOption))   // Check serial path
+    if ( true || parser.value(serialportOption) != "" )   // Check tcp port server
     {
         QRegExp re_serial("(/dev/[a-zA-Z0-9]+):([0-9]+)");
         if ( re_serial.indexIn( parser.value(serialportOption)) > -1 ){
@@ -87,7 +86,20 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (parser.isSet(sqlOption))   // Check serial path
+    if ( parser.value(influxdbOption) != "" )   // Check tcp port server
+    {
+        QRegExp re_influx("^(http://.*)");
+        if ( re_influx.indexIn( parser.value(influxdbOption)) >  -1 ){
+            config.influxdb_url=re_influx.cap(1);
+        }
+        else
+        {
+        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: influxdb parameter should look like http://influxdb.server/db/database/series?u=USER&p=PASS")));
+        parser.showHelp(1);
+        }
+    }
+
+    if ( parser.value(sqlOption) != "" )   // Check tcp port server
     {
         QRegExp re_sql("(\\w+):(\\w+)@([\\w\\.]+):(\\d+):(\\w+)");
         if ( re_sql.indexIn( parser.value(sqlOption)) > -1 ){
@@ -103,7 +115,7 @@ int main(int argc, char *argv[])
         parser.showHelp(1);
         }
     }
-    if (parser.isSet(statsdOption))   // Check statsd
+    if ( parser.value(statsdOption) != "" )   // Check tcp port server
     {
         QRegExp re_statsd("([\\w\\.]+):(\\d+)");
         if ( re_statsd.indexIn( parser.value(statsdOption)) > -1 ){
@@ -112,59 +124,33 @@ int main(int argc, char *argv[])
         }
         else
         {
-        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: statsd parameter should look like host:port (ex:mysserver:8125)")));
-        parser.showHelp(1);
+            fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: statsd parameter should look like host:port (ex:mysserver:8125)")));
+            parser.showHelp(1);
         }
     }
 
-    if (parser.isSet(tcpportOption))   // Check statsd
+
+    if ( parser.value(tcpportOption) != "" )   // Check tcp port server
     {
         config.tcpserver_port=parser.value(tcpportOption).toInt();
-        if ( config.tcpserver_port<2 || config.tcpserver_port>65535) config.tcpserver_port=0;
+        if ( config.tcpserver_port<1 || config.tcpserver_port>65535) {
+            config.tcpserver_port=0;
+            fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: tcp server port should be >0 and <65535")));
+            parser.showHelp(1);
+        }
     }
-    else
-    {
-        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: tcp server port should be >0 and <65535")));
-        parser.showHelp(1);
-    }
-
-
-
-
-
-    // Check database settings
-/*
-    QRegExp re_sql("\\w+@[\\w\\.]+:\\d+:\\w+");
-    QString tmp=parser.value(sqlOption);
-    if (tmp.contains(re_sql)){
-        config.db_database=tmp;
-    }else {
-        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: Databae link should look like user@server:port:database")));
-        parser.showHelp(1);
-    }
-
-
-    // Check statsd host
-    QRegExp re_statsd("[\\w\\.]+:[0-9]+");
-    tmp=parser.value(statsdOption);
-    if (tmp.contains(re_statsd)){
-        config.statsd_server=tmp;
-    }else {
-        fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: Statsd connection should look like my.statd.server.com:8000 ")));
-        parser.showHelp(1);
-    }
-
-*/
 
 
 
     qDebug("Config:\n\
            Serial '%s':%d\n\
            STATSD '%s':%d\n\
+           InfluxDB '%s'\n\
            MySQL: %s:%s@%s:%d:%s\n\
            Tcpserver_port:%u\n",
            qPrintable(config.serial_path), config.serial_speed,
            qPrintable(config.statsd_host), config.statsd_port,
+           qPrintable(config.influxdb_url),
            qPrintable(config.db_user),qPrintable(config.db_pass),qPrintable(config.db_host),config.db_port,qPrintable(config.db_database),
            config.tcpserver_port);
 

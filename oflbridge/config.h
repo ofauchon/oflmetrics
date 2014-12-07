@@ -24,6 +24,8 @@ public:
     QString db_pass;
     QString db_host;
     QString db_database;
+
+    QString influxdb_url;
 };
 
 #endif // CONFIG_H

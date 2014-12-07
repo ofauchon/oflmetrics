@@ -15,6 +15,9 @@ public:
     PacketProcessor(Config *qConfig);
     Config *config;
     QSqlDatabase db;
+private:
+    void influx_sendmetric(QString node, QString temp);
+
 signals:
 
 

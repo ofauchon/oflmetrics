@@ -7,6 +7,12 @@
 #include <QUdpSocket>
 #include <QHostAddress>
 
+// For InfluxDB POST
+#include <QUrl>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+
 
 PacketProcessor::PacketProcessor(Config *qConfig)
 {
@@ -20,11 +26,28 @@ PacketProcessor::PacketProcessor(Config *qConfig)
 
 }
 
+void PacketProcessor::influx_sendmetric(QString node, QString temp)
+{
+    QByteArray jsonString = QString(tr("[{\"name\":\".gauge\",\"columns\":[\"value\"],\"points\":[[]]}]")).arg(node).arg(temp).toLatin1();
+    qDebug("PacketProcessor:: InfluxDb json message: '%s'", qPrintable(jsonString));
+
+    QByteArray postDataSize = QByteArray::number(jsonString.size());
+
+    QUrl req("'http://localhost:8086/db/metrics/series?u=olivier&p=ire3wvq8");
+    QNetworkRequest request(req);
+    request.setRawHeader("Content-Type", "application/json");
+    request.setRawHeader("Content-Length", postDataSize);
+
+    QNetworkAccessManager nam;
+    QNetworkReply * reply = nam.post( request, jsonString);
+}
+
+
+
 void PacketProcessor::insertPacket(Packet *p)
 {
     qDebug("PacketProcessor: SRC:%s DST:%s MSG:'%s'",
            qPrintable(p->src_node_id), qPrintable(p->dst_node_id), qPrintable(p->msg));
-
 
     // Walk through the packet to find datas;
     QRegExp re("(TEMP|BATLEV):([^;]+);");
@@ -36,6 +59,10 @@ void PacketProcessor::insertPacket(Packet *p)
             QString cap_val = re.cap(2);
             message+= QString(tr("sensor_%1_%2:0|g\n")).arg(p->src_node_id).arg(cap_type);
             message+= QString(tr("sensor_%1_%2:%3|g\n")).arg(p->src_node_id).arg(cap_type).arg(cap_val);
+
+            if (config->influxdb_url != "" ) influx_sendmetric(p->src_node_id, cap_val);
+
+
             pos += re.matchedLength();
 
     }
