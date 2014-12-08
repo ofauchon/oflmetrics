@@ -17,7 +17,7 @@ public:
     QSqlDatabase db;
     void autotest(void);
 private:
-    void influx_sendmetric(QString node, QString type, QString temp);
+    void influx_sendmetric(QString node, QString type, QString val);
 
 signals:
 

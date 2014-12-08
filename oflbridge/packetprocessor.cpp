@@ -26,9 +26,10 @@ PacketProcessor::PacketProcessor(Config *qConfig)
 
 }
 
-void PacketProcessor::influx_sendmetric(QString node, QString type, QString temp)
+void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
 {
-    QByteArray jsonString = QString(tr("[{\"name\":\"sensor_%1_%2.gauge\",\"columns\":[\"value\"],\"points\":[[%3]]}]")).arg(node).arg(type).arg(temp).toLatin1();
+    if (val.startsWith("+") ) val.remove(0,1);
+    QByteArray jsonString = QString(tr("[{\"name\":\"sensor_%1_%2.gauge\",\"columns\":[\"value\"],\"points\":[[%3]]}]")).arg(node).arg(type).arg(val).toLatin1();
     qDebug("PacketProcessor:: InfluxDb json message: '%s'", qPrintable(jsonString));
 
     QByteArray postDataSize = QByteArray::number(jsonString.size());
