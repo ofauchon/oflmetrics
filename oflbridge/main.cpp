@@ -174,6 +174,8 @@ int main(int argc, char *argv[])
 
     PacketProcessor *processor = new PacketProcessor(&config);
 
+    //processor->autotest();
+
     // SERIAL THREAD
     SerialDeviceThread *serial_thread = new SerialDeviceThread(&config);
     serial_thread->start();
