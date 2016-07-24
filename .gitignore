@@ -8,4 +8,6 @@ moc_*
 *.so
 *.so.*
 oflbridge/oflbridge
+arm-2008q3
+tmp
 
