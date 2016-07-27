@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <gpio.h>
 
 #include "libs/config.h"
 #include "libs/utils.h"
@@ -30,6 +31,7 @@
 // Configuration defines
 #define LED_RED_GPIO 50
 #define LED_GREEN_GPIO 43
+
 #define SLEEP_CYCLE 60
 #define RADIO_POWER 0x12
 #define RADIO_CHANNEL 0X00
@@ -43,12 +45,37 @@
 #define CMD_MAXLEN 255
 
 
+#define MIN_CHAN 0 
+#define MAX_CHAN 15 
+
+
 //uint8_t SMAC[4] = { 0x00, 0x00, 0x00, 0x01 };
 uint8_t BROADCAST_MAC[4] = { 0xFF, 0xFF, 0xFF, 0xFF };
-volatile uint8_t chan;
+volatile uint8_t cur_chan, hop_spd;
 volatile uint8_t monitor_mode;
 volatile packet_t *p;
 config_t myconfig; 
+
+
+volatile uint8_t clock_d,clock_h,clock_m,clock_s, clock_100ms;
+volatile uint32_t cntr;
+
+
+// Just blink once
+void bip_led(int LED_GPIO)
+{
+  #define PDELAY 500000
+  volatile uint32_t i; 
+  gpio_data_set(1ULL<< LED_GPIO);
+  for(i=0; i<PDELAY; i++) { continue; }
+  gpio_data_reset(1ULL<< LED_GPIO);
+  for(i=0; i<PDELAY; i++) { continue; }
+}
+
+#define bip_led_red() bip_led(LED_RED_GPIO);
+#define bip_led_green() bip_led(LED_GREEN_GPIO);
+
+
 
 
 /*
@@ -141,8 +168,7 @@ void dump_hex(volatile packet_t *p, paquet *pk)
  */
 void maca_rx_callback(volatile packet_t *p) {
     (void)p;
-    gpio_data_set(1ULL<< LED_RED_GPIO);
-    gpio_data_reset(1ULL<< LED_RED_GPIO);
+    bip_led_red(); 
 }
 
 
@@ -162,8 +188,9 @@ void process_cmd(char* cmd)
     {
         printf(":dump_hex        Dump incoming packets (hex form)\r\n");
         printf(":dump_human      Dump incoming packets (human-readable)\r\n");
-        printf(":dump_config     Dump current config\r\n");
+        printf(":show_config     Dump current config\r\n");
         printf(":channel XX      Force radio channel to XX\r\n");
+        printf(":chan_hop XX     Force channel hopping every 5<XX<180 seconds\r\n");
         printf(":selftest_xtea   Test XTEA Encoding/Decoding\r\n");
         printf(":info            Informations\r\n");
         printf(":send MY_COMMAND      Send the command\r\n");
@@ -181,14 +208,20 @@ void process_cmd(char* cmd)
     else if ( strstr(cmd, ":channel ") && strlen(cmd) > 9 ) {
         int ch = atoi (cmd+9);
         set_channel(ch); /* channel 11 */
-        printf("OK channel set to %d", ch);
+	cur_chan=ch; 
+        printf("OK channel set to %d", cur_chan);
+    }
+    else if ( strstr(cmd, ":chanhop ") && strlen(cmd) > 9 ) {
+        int tmp = atoi (cmd+9);
+	if ( tmp > 5 && tmp < 180) hop_spd=tmp;
+        printf("OK channel hopping every %d s", hop_spd);
     }
     else if ( strstr(cmd, ":selftest_xtea")) {
         printf("OK running selftest_xtea\r\n");
             selftest_xtea();
     }
-    else if ( strstr(cmd, ":dump_config")) {
-        printf("OK dumping configuration\r\n");
+    else if ( strstr(cmd, ":show_config")) {
+        printf("OK showing configuration\r\n");
             dump_config(myconfig);
     }
     else if ( strstr(cmd,":send ")){
@@ -219,17 +252,40 @@ void process_cmd(char* cmd)
 
 }
 
+void kbi4_isr(void){
+	printf("O\n");
+	clear_kbi_evnt(4);
+}
+void kbi7_isr(void){
+	printf("N\n");
+	clear_kbi_evnt(7);
+}
 
 
 void init_hw(void)
 {
+    // Set KBI6(GPIO28) as input
+    #define PIN_KBI6 28
+ //   setPinGpio(PIN_KBI6, GPIO_DIR_INPUT);
+ //   gpio_sel0_pullup(PIN_KBI6); 
+
+    enable_irq_kbi(7);
+    kbi_edge(7); 	//KBI_7 is edge sensitive (in opposite to level sensitive)
+    enable_ext_wu(7);	//KBI_7 is configured to wake up cpu from wakeup or doze
+
+    enable_irq_kbi(4);
+    kbi_edge(4); 	//KBI_4 is edge sensitive (in opposite to level sensitive)
+    enable_ext_wu(4);	//KBI_4 is configured to wake up cpu from wakeup or doze
+
     // Configure RED & GREEN LEDs GPIO
     setPinGpio(LED_RED_GPIO, GPIO_DIR_OUTPUT);
     setPinGpio(LED_GREEN_GPIO, GPIO_DIR_OUTPUT);
-    gpio_data_set(1ULL<< LED_RED_GPIO);
-    gpio_data_reset(1ULL<< LED_GREEN_GPIO);
 
-    /* trim the reference osc. to 24MHz , deal with voltage regulator*/
+
+    // Bling GREEN
+    gpio_data_set(1ULL<< LED_GREEN_GPIO);
+    gpio_data_reset(1ULL<< LED_GREEN_GPIO);
+    // trim the reference osc. to 24MHz , deal with voltage regulator
     trim_xtal();
     vreg_init();
     // Init Serial port 1 
@@ -238,7 +294,106 @@ void init_hw(void)
     maca_init();
     set_channel(myconfig.radiochan);
     set_power(myconfig.txpower);
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+ *  TIMER STUFF START
+ */ 
+
+void tmr0_isr(void)
+{   
+    cntr++;
+    clock_100ms+=1;
+
+    //process_rx_packets();
+    if (clock_100ms == 10) {
+        clock_s++;
+        clock_100ms=0;
+    }
+
+    if ( hop_spd>0 && (clock_s % hop_spd )==0) // Time to hop ! 
+    {
+	cur_chan++; 
+	if (cur_chan>MAX_CHAN) cur_chan=0;
+	set_channel(cur_chan); 
+	printf("Channel hopping to ch:%d\r\n",cur_chan); 
+
+    }
+
+
+    if (clock_s == 60) { clock_m++; clock_s=0;}
+    if (clock_m == 60) { clock_h++; clock_m=0;}
+    if (clock_h == 24) { clock_d++; clock_h=0;}
+
+    // Restart counter
+    *TMR0_SCTRL = 0;
+    *TMR0_CSCTRL = 0x0040; /* clear compare flag */
+
+
+}
+
+void timers_init(void)
+{   
+    /* timer setup */
+    /* CTRL */
+#define TT_COUNT_MODE 1      /* use rising edge of primary source */
+#define TT_PRIME_SRC  0xf    /* Perip. clock with 128 prescale (for 24Mhz = 187500Hz)*/
+#define TT_SEC_SRC    0      /* don't need this */
+#define TT_ONCE       0      /* keep counting */
+#define TT_LEN        1      /* count until compare then reload with value in LOAD */
+#define TT_DIR        0      /* count up */
+#define TT_CO_INIT    0      /* other counters cannot force a re-initialization of this counter */
+#define TT_OUT_MODE   0      /* OFLAG is asserted while counter is active */
+
+    *TMR_ENBL     = 0;                    /* tmrs reset to enabled */
+    *TMR0_SCTRL   = 0;
+    *TMR0_CSCTRL  = 0x0040;
+    *TMR0_LOAD    = 0;                    /* reload to zero */
+    *TMR0_COMP_UP = 18750;                /* trigger a reload at the end */
+    *TMR0_CMPLD1  = 18750;                /* compare 1 triggered reload level, 10HZ maybe? */
+    *TMR0_CNTR    = 0;                    /* reset count register */
+    *TMR0_CTRL    = (TT_COUNT_MODE<<13) | (TT_PRIME_SRC<<9) | (TT_SEC_SRC<<7) | (TT_ONCE<<6) | (TT_LEN<<5) | (TT_DIR<<4) | (TT_CO_INIT<<3) | (TT_OUT_MODE);
+    *TMR_ENBL     = 0xf;                  /* enable all the timers --- why not? */
+}
+
+
+
+/*
+ *  TIMER STUFF END 
+ */ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// TODO: Enable timers and finish channel hopping
+
+
 
 
 /*
@@ -247,7 +402,10 @@ void init_hw(void)
  */
 void main(void) 
 {
+
     init_hw();
+    bip_led_green(); 
+    bip_led_red(); 
     printf("OFLdongle start\r\n");
 
     paquet pk;
@@ -255,6 +413,19 @@ void main(void)
     char cmd_data[CMD_MAXLEN+1];
     uint8_t cmd_pos=0;
     monitor_mode=0;
+    hop_spd=0; // No channel hopping at start 
+
+    // Wall clock
+    clock_h=0;
+    clock_m=0;
+    clock_s=0;
+
+    // Prepare timers.
+//    timers_init();
+
+    // CRM is needed for KBI interrupts 
+    enable_irq(CRM);
+
 
     // Get config
     uint8_t ret= read_config(&myconfig);
