@@ -76,6 +76,16 @@ void bip_led(int LED_GPIO)
 #define bip_led_green() bip_led(LED_GREEN_GPIO);
 
 
+/*
+ * cmd_info
+ */
+void cmd_info(void)
+{
+    printf("OFLDongle firmware from OFLMetrics project:\r\n");
+    printf("(c) Olivier Fauchon 2013-2016\r\n");
+    printf("Released under GPL License\r\n");
+    printf("https://github.com/ofauchon/oflmetrics\r\n");
+}
 
 
 /*
@@ -192,8 +202,8 @@ void process_cmd(char* cmd)
         printf(":channel XX      Force radio channel to XX\r\n");
         printf(":chan_hop XX     Force channel hopping every 5<XX<180 seconds\r\n");
         printf(":selftest_xtea   Test XTEA Encoding/Decoding\r\n");
+        printf(":send <CMD>      Send the command\r\n");
         printf(":info            Informations\r\n");
-        printf(":send MY_COMMAND      Send the command\r\n");
     }
     // Hexa dump
     else if (strstr(cmd,":dump_hex")) {
@@ -246,6 +256,9 @@ void process_cmd(char* cmd)
         }
 
 
+    }else if ( strstr(cmd, ":info")) {
+        printf("OK \r\n");
+            cmd_info();
     } else {
 	printf("ERROR: Unknown command\r\n");
     }
