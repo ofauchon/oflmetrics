@@ -8,4 +8,5 @@ moc_*
 *.so
 *.so.*
 oflbridge/oflbridge
+oflbridge/oflbridge.pro*
 
