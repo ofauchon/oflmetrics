@@ -33,6 +33,7 @@ int SerialDeviceThread::writeString(char* pString){
    return ret;
 }
 
+// WTF... malloc for string cleaning ... is that smart ?
 char* SerialDeviceThread::specialChar(char* src)
 {
   // output buffer to 0
@@ -61,19 +62,18 @@ char* SerialDeviceThread::specialChar(char* src)
   return dst;
 }
 
+
 void SerialDeviceThread::run(){
 
-    qDebug("SERIAL: Thread started.");
-
-
+    qDebug("SerialDeviceTread:: Thread started.");
     for(;;){
         switch (state)
         {
         case 0:{
-            oDebug("State 0");
+            oDebug("SerialDeviceTread:: State 0");
             int ret = LS.Open(myconfig->serial_path.toStdString().c_str(),myconfig->serial_speed);
             if (ret!=1) {
-                oDebug("Can't open serial port %s, wait 3000ms", myconfig->serial_path.toStdString().c_str());
+                oDebug("SerialDeviceTread:: Can't open serial port %s, wait 3000ms", myconfig->serial_path.toStdString().c_str());
                 this->msleep(3000);
                 break;
             }
@@ -82,34 +82,34 @@ void SerialDeviceThread::run(){
             break;
         }
         case 1:{
-            oDebug("State 1, send ':dump_human' command");
+            oDebug("SerialDeviceTread:: State 1, send ':dump_human' command");
             if (LS.WriteString(":dump_human\n") <0){
-                oDebug("Can't write command to serial port, closing port");
+                oDebug("SerialDeviceTread:: Can't write command to serial port, closing port");
                 LS.Close();
                 state=0;
             } else state++;
             break;
         }
         case 2:{
-            oDebug("State 2, waiting for 'OK'");
+            oDebug("SerialDeviceTread:: State 2, waiting for 'OK'");
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret=this->readString(rx_buf,'\n');
             if (ret>0) {
-                //oDebug("Receiving %d bytes '%.*s'",ret , ret, rx_buf);
+                //oDebug("SerialDeviceTread:: Receiving %d bytes '%.*s'",ret , ret, rx_buf);
                 if ( strstr(rx_buf,"OK dump_human mode")!=NULL ){
-                   oDebug("Now in dump_human mode (State 3) ");
+                   oDebug("SerialDeviceTread:: Now in dump_human mode (State 3) ");
                    state=3;
                 }
             }
             break;
         }
         case 3:{
-            //oDebug("State 3, Listening node's message");
+            //oDebug("SerialDeviceTread:: State 3, Listening node's message");
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret= this->readString(rx_buf,'\n');
             if (ret>1) {
                 if (rx_buf[0] == 'R' && rx_buf[1] == 'X'){
-               // oDebug("Receiving data '%s'", rx_buf);
+               // oDebug("SerialDeviceTread:: Receiving data '%s'", rx_buf);
                 Packet *p = new Packet();
                 p->initialize(rx_buf+4);
                 emit broadcastPacket(p);
@@ -126,7 +126,7 @@ void SerialDeviceThread::run(){
 
 }
 
-
+// Obsolete code  ?
 void SerialDeviceThread::oDebug(const char* msg, ...)
 {
     fprintf(stdout, "SERIAL: ");
