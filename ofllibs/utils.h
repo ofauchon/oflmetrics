@@ -53,6 +53,7 @@ int8_t read_config(config_t *t);
 int8_t write_config(config_t *t);
 void dump_config(config_t myconfig);
 void default_config(config_t *t);
+char* my_itoa(int16_t i, char b[]); 
 
 
 #endif
