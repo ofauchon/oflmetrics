@@ -1,0 +1,19 @@
+OFLomniradio is the firmaware for Econotag or M12 usb board. 
+This program turn your usb Econotag/ M12 into a multi-protocol radio decoder
+
+Supported protocols : 
+
+- X10 
+
+How to build 
+------------
+
+Edit Makefile and change BOARD if required (M12 or econotag) 
+build with 'make'
+
+How to flash
+------------
+cd ../scripts
+./flash_m12 m12 ../oflomniradio/oflomniradio.bin 
+
+

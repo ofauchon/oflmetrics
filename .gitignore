@@ -1,4 +1,5 @@
 libmc1322x
+arm-2008q3
 *.elf
 *.map
 *.bin
@@ -8,7 +9,6 @@ moc_*
 *.so
 *.so.*
 oflbridge/oflbridge
-arm-2008q3
-tmp
+oflbridge/oflbridge.pro*
 */obj_econotag
-
+tmp

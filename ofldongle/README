@@ -1,62 +1,31 @@
-OFLbridge is a QT5 daemon that communicate with OFLdongle through serial port 
-(/dev/ttyUSB1). OFLbridge sends command to turn OFLdongle into dump_human mode. 
-Received messages can be : 
- - written to a MySQL database,
- - displayed to console 
- - broadcasted to any client connected on the embedded server (Work in progress)
- - sent with xPL protocol (Work in progress) 
+OFLdongle is the firmaware for Econotag or M12 usb board. 
+This program turn your usb Econotag/ M12 into a radio to usb gateway . 
+
+How to build 
+------------
+
+Edit Makefile and change BOARD if required (M12 or econotag) 
+build with 'make'
+
+How to flash
+------------
+cd ../scripts
+./flash_m12 m12 ../ofldongle/ofldongle_m12.bin 
 
 
-Building oflbridge
-------------------
+How to test
+-----------
+screen /dev/ttyUSB1 115200 
 
-#install Qt5 
-pacman -S qt5-base
+type ?<enter> to see the list of commands
+:dump_hex        Dump incoming packets (hex form)
+:dump_human      Dump incoming packets (human-readable)
+:show_config     Dump current config
+:channel XX      Force radio channel to XX
+:chan_hop XX     Force channel hopping every 5<XX<180 seconds
+:selftest_xtea   Test XTEA Encoding/Decoding
+:info            Informations
+:send MY_COMMAND      Send the command
 
-# Build xPLLib
-cd oflbridge/xPLLib
-  make
-
-# Build oflbridge
-cd oflbridge
-  qmake 
-  make
-
-
-Prepare database
-----------------
-
-mysql -u root 
-
-mysql> CREATE DATABASE oflmetrics
-mysql> CREATE TABLE `incoming` (
-  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `dt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `src` char(20) DEFAULT NULL,
-  `dst` char(20) DEFAULT NULL,
-  `msg` char(255) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8
-
-mysql> GRANT SELECT,INSERT,UPDATE ON oflmetrics.* TO oflmetrics@localhost IDENTIFIED BY 'whatyouwant';
-
-
-Start oflbridge 
------------------
-
- ./oflbridge -D oflmetrics -H localhost -U whatyouwant
-
-Config
-  Serial /dev/ttyUSB1 at 115200
-  DB: enabled:1 host:localhost user:oflmetrics database:oflmetrics
-  Tcpserver: enabled:0 port: 5050
-SerialDeviceThread: Created on port . "/dev/ttyUSB1"  at speed  115200
-SERIAL: Thread started.
-SERIAL: State 0
-SERIAL: State 1, send ':dump_human' command
-SERIAL: State 2, waiting for 'OK'
-SERIAL: readString read string: ':dump_human\r\n' (13 bytes)
-SERIAL: State 2, waiting for 'OK'
-SERIAL: readString read string: 'OK dump_human mode <press any key to stop>\r\n' (44 bytes)
-SERIAL: Now in dump_human mode (State 3) 
+ You-re done ! 
 
