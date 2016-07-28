@@ -10,4 +10,5 @@ moc_*
 *.so.*
 oflbridge/oflbridge
 oflbridge/oflbridge.pro*
-
+*/obj_econotag
+tmp
