@@ -34,6 +34,7 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     QByteArray postDataSize = QByteArray::number(jsonString.size());
     qDebug("PacketProcessor: InfluxDb message: '%s' length: %d", qPrintable(jsonString), jsonString.size());
 
+    nam = new QNetworkAccessManager(this);
 
     QUrl req(config->influxdb_url);
     QNetworkRequest request(req);
@@ -41,7 +42,12 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     request.setRawHeader("Content-Length", postDataSize);
     request.setRawHeader("User-Agent", "oflbridge");
 
-    //QNetworkReply * reply = nam.post( request, jsonString);
+      nam->post( request, jsonString);
+ //   QNetworkReply * reply = nam->post( request, jsonString);
+ //   connect(reply, SIGNAL(metaDataChanged()), this, SLOT(replyMetaDataChanged()));
+ //   connect(reply, SIGNAL(readyRead()), this, SLOT(slotReadyRead()));
+    connect(nam, SIGNAL(finished(QNetworkReply *)), this, SLOT(replyFinished(QNetworkReply *)));
+
     qDebug("PacketProcessor: InfluxDb destination: '%s'", qPrintable(config->influxdb_url));
 
 }
@@ -90,6 +96,31 @@ void PacketProcessor::insertPacket(Packet *p)
 }
 
 
+/*
+    void PacketProcessor::replyMetaDataChanged() {
+        qDebug() << "Metadata changed";
+        qDebug() << "Content-Length:" << reply->header(QNetworkRequest::ContentLengthHeader);
+        size = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+    }
+    void PacketProcessor::slotReadyRead(QNetworkReply* reply) {
+        QByteArray ba = reply->readAll();
+        fetched += ba.size();
+        qDebug() << "Read" << fetched << "of" << size;
+ 
+    }
+*/
+    void PacketProcessor::replyFinished(QNetworkReply* reply) {
+        int httpStatus = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qDebug() << "PacketProcessor: Finished "  << reply->error() << " status:" << httpStatus;
+    if(reply->error())
+    {
+        qDebug() << "PacketProcessor: ERROR! " << reply->errorString();
+    } else {
+	qDebug() << "PacketProcessor: HTTP Response body:" << reply->readAll();
+	}
+    }
+
+// End Slots
 
 void PacketProcessor::autotest(){
     this->influx_sendmetric("sensor_0000001", "temp", "23.107");
