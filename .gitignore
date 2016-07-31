@@ -8,4 +8,4 @@ moc_*
 *.so
 *.so.*
 oflbridge/oflbridge
-
+*.DS_Store
