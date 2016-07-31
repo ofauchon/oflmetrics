@@ -9,7 +9,6 @@
 
 // For InfluxDB POST
 #include <QUrl>
-#include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
@@ -17,6 +16,7 @@
 PacketProcessor::PacketProcessor(Config *qConfig)
 {
     config = qConfig;
+    nam = new QNetworkAccessManager(this);
 
     //db = QSqlDatabase::addDatabase("QMYSQL");
     //db.setHostName(config->db_host);
@@ -29,19 +29,26 @@ PacketProcessor::PacketProcessor(Config *qConfig)
 void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
 {
     if (val.startsWith("+") ) val.remove(0,1);
-    QByteArray jsonString = QString(tr("[{\"name\":\"sensor_%1_%2.gauge\",\"columns\":[\"value\"],\"points\":[[%3]]}]")).arg(node).arg(type).arg(val).toLatin1();
-    qDebug("PacketProcessor:: InfluxDb json message: '%s'", qPrintable(jsonString));
 
+    // InfluxDB payload (https://docs.influxdata.com/influxdb/v0.13/guides/writing_data/)
+    QByteArray jsonString = QString(tr("sensors,id=RDB_%1,type=%2 value=%3")).arg(node).arg(type).arg(val).toLatin1();
     QByteArray postDataSize = QByteArray::number(jsonString.size());
+    qDebug("PacketProcessor: InfluxDb message: '%s' length: %d", qPrintable(jsonString), jsonString.size());
+
 
     QUrl req(config->influxdb_url);
     QNetworkRequest request(req);
-    request.setRawHeader("Content-Type", "application/json");
+    request.setRawHeader("Content-Type", "application/x-www-form-urlencoded");
     request.setRawHeader("Content-Length", postDataSize);
+    request.setRawHeader("User-Agent", "oflbridge");
 
-    QNetworkAccessManager *nam = new QNetworkAccessManager(this);
-    QNetworkReply * reply = nam->post( request, jsonString);
-    qDebug("PacketProcessor:: InfluxDb destination: '%s'", qPrintable(config->influxdb_url));
+      nam->post( request, jsonString);
+ //   QNetworkReply * reply = nam->post( request, jsonString);
+ //   connect(reply, SIGNAL(metaDataChanged()), this, SLOT(replyMetaDataChanged()));
+ //   connect(reply, SIGNAL(readyRead()), this, SLOT(slotReadyRead()));
+    connect(nam, SIGNAL(finished(QNetworkReply *)), this, SLOT(replyFinished(QNetworkReply *)));
+
+    qDebug("PacketProcessor: InfluxDb destination: '%s'", qPrintable(config->influxdb_url));
 
 }
 
@@ -89,6 +96,31 @@ void PacketProcessor::insertPacket(Packet *p)
 }
 
 
+/*
+    void PacketProcessor::replyMetaDataChanged() {
+        qDebug() << "Metadata changed";
+        qDebug() << "Content-Length:" << reply->header(QNetworkRequest::ContentLengthHeader);
+        size = reply->header(QNetworkRequest::ContentLengthHeader).toLongLong();
+    }
+    void PacketProcessor::slotReadyRead(QNetworkReply* reply) {
+        QByteArray ba = reply->readAll();
+        fetched += ba.size();
+        qDebug() << "Read" << fetched << "of" << size;
+ 
+    }
+*/
+    void PacketProcessor::replyFinished(QNetworkReply* reply) {
+        int httpStatus = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        qDebug() << "PacketProcessor: Finished "  << reply->error() << " status:" << httpStatus;
+    if(reply->error())
+    {
+        qDebug() << "PacketProcessor: ERROR! " << reply->errorString();
+    } else {
+	qDebug() << "PacketProcessor: HTTP Response body:" << reply->readAll();
+	}
+    }
+
+// End Slots
 
 void PacketProcessor::autotest(){
     this->influx_sendmetric("sensor_0000001", "temp", "23.107");

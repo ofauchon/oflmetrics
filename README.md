@@ -48,13 +48,14 @@ I'll try to write some detailed documentation soon.
 
 I use econotags v1/v2, Redbee, M12. 
 Please visit http://redwirellc.com to order 
+28/07/2016 Update: redwirellc.com seems down, no idea where to buy the boards now :-(
 
 # Components 
 
 
 - oflnode   : The sensor firmware itself, it can reads or write from GPIOs, and send/receives frames from others.
 - ofldongle : USB Stick to receive/send frames to/from OFLNodes (through serial port) 
-- oflbridge : Communication daemon with ofldongle, to multiple backends (xpl, mysql)
+- oflbridge : Communication daemon with ofldongle, to multiple backends (xpl, mysql, influxDB)
 
 
 # Notes
