@@ -14,7 +14,7 @@ Initial goals:
 - Lightweight code (Not an OS: No tasks, processes, threads... just a main loop, and a couple of timers)
 - Simple protocol (No TCP/IP things, just some raw bytes . Back to basics)
 - Simple meshing (Routing over a a couple of nodes is enough for me) => Work in progress
-- Some security (eg: XTEA encryption ... )  => Work in progress
+- Some security (eg: XTEA software encryption ... )  => Work in progress
 - Low power (Should operate properly on batteries)
 
 Current status: 
