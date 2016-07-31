@@ -16,6 +16,7 @@
 PacketProcessor::PacketProcessor(Config *qConfig)
 {
     config = qConfig;
+    nam = new QNetworkAccessManager(this);
 
     //db = QSqlDatabase::addDatabase("QMYSQL");
     //db.setHostName(config->db_host);
@@ -34,7 +35,6 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     QByteArray postDataSize = QByteArray::number(jsonString.size());
     qDebug("PacketProcessor: InfluxDb message: '%s' length: %d", qPrintable(jsonString), jsonString.size());
 
-    nam = new QNetworkAccessManager(this);
 
     QUrl req(config->influxdb_url);
     QNetworkRequest request(req);
