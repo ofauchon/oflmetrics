@@ -17,6 +17,7 @@ PacketProcessor::PacketProcessor(Config *qConfig)
 {
     config = qConfig;
     nam = new QNetworkAccessManager(this);
+    connect(nam, SIGNAL(finished(QNetworkReply *)), this, SLOT(replyFinished(QNetworkReply *)));
 
     //db = QSqlDatabase::addDatabase("QMYSQL");
     //db.setHostName(config->db_host);
@@ -42,11 +43,7 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     request.setRawHeader("Content-Length", postDataSize);
     request.setRawHeader("User-Agent", "oflbridge");
 
-      nam->post( request, jsonString);
- //   QNetworkReply * reply = nam->post( request, jsonString);
- //   connect(reply, SIGNAL(metaDataChanged()), this, SLOT(replyMetaDataChanged()));
- //   connect(reply, SIGNAL(readyRead()), this, SLOT(slotReadyRead()));
-    connect(nam, SIGNAL(finished(QNetworkReply *)), this, SLOT(replyFinished(QNetworkReply *)));
+    nam->post( request, jsonString);
 
     qDebug("PacketProcessor: InfluxDb destination: '%s'", qPrintable(config->influxdb_url));
 
@@ -118,6 +115,7 @@ void PacketProcessor::insertPacket(Packet *p)
     } else {
 	qDebug() << "PacketProcessor: HTTP Response body:" << reply->readAll();
 	}
+    reply->deleteLater();
     }
 
 // End Slots
