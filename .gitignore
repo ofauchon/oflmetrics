@@ -11,4 +11,6 @@ moc_*
 oflbridge/oflbridge
 oflbridge/oflbridge.pro*
 */obj_econotag
+*/.qmake.stash
+oflbridge/Makefile
 tmp
