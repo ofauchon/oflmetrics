@@ -14,3 +14,4 @@ oflbridge/oflbridge.pro*
 */.qmake.stash
 */Makefile
 tmp
+.DS_Store
