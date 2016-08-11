@@ -15,3 +15,4 @@ oflbridge/oflbridge.pro*
 */Makefile
 tmp
 .DS_Store
+tools/bbmc-custom/bbmc-custom
