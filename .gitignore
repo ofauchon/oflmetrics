@@ -16,3 +16,4 @@ oflbridge/oflbridge.pro*
 tmp
 .DS_Store
 tools/bbmc-custom/bbmc-custom
+tools/ft232r_prog-1.25/ft232r_prog
