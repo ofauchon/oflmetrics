@@ -30,9 +30,14 @@ You should have received a copy of the GNU General Public License
 #include <adc.h>
 
 #define SERIAL_SPEED 115200
-// #define HIBERNATE
-#define HIBERNATE_DELAY 60
+#define DEEP_SLEEP
+#define SLEEP_DELAY 60
 
+// ID of device
+#ifndef NODE_NO
+#warning '** Using default NODE_NO=0x99'
+#define NODE_NO 0x99
+#endif
 
 config_t myconfig; 
 
@@ -227,10 +232,10 @@ DBG("@batteryLevel\r\n")
     return adc_reading[8];
 }
 
+// Hardware deep sleep. 
 void hibernate(uint8_t p_sec)
 {
 
-    DBG("@Hibernate\r\n")
     // Hibernate (See sleep example of libmc1322x for details
     *CRM_WU_CNTL = 0x1;
     *CRM_WU_TIMEOUT =  p_sec * 2000; /* 60s */
@@ -295,6 +300,8 @@ void main(void) {
 
         if ( res == -3){ // No configuration signature in NVR
 	       default_config(&myconfig);
+           myconfig.smac[3]=NODE_NO;  // Patch default config with NODE_NO 
+
             res=write_config(&myconfig);
             if (res<0) {
                 DBG("! m:error_wr_cnf_nvm\r\n");
@@ -374,7 +381,6 @@ TODO: rewrite this shit
         if ( myconfig.capa[0] & CAPA_TEMP ) 
         {
             DBG("# m:Processing CAPA_TEMP\r\n");
-            wait100ms(20); // Wait 2s so we have time to wake up from hibernation   
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
             if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac) == 1)
             {
@@ -414,8 +420,10 @@ TODO: rewrite this shit
         }
 
         // Handle error reporting
-        if (report_err>0) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "ERROR:+%02d;",report_err);
+        if (report_err>0) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "ERROR:%04d;",report_err);
  
+
+
         // Compute data length
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
 
@@ -469,13 +477,19 @@ noprocess:
         wait100ms(2);
         digitalWrite(RX_LED_PIN, 0);
 
-// We can either use powersave functions, or sleep.
-#ifdef HIBERNATE
-        DBG("# m: Sleep: Hibernate %d secs \r\n", HIBERNATE_DELAY)
-        wait100ms(2);hibernate(HIBERNATE_DELAY);wait100ms(2); // waits for serial to be flushed
-#else
-        DBG("# m: Sleep: System Wait %d secs \r\n", HIBERNATE_DELAY)
-        wait100ms(HIBERNATE_DELAY * 10);
+#ifdef DEEP_SLEEP // Hardware sleep (low consumption)
+        DBG("# m: Going to deep sleep for %d secs \r\n", SLEEP_DELAY)
+        wait100ms(5);
+        hibernate(SLEEP_DELAY);
+        wait100ms(200); // waits for serial to be flushed
+        DBG("# m: Wake up from deep sleep done\r\n")
+
+#else   // Simple CPU Wait
+        DBG("# m: Going to soft sleep (cpu wait) for %d secs \r\n", SLEEP_DELAY)
+        wait100ms(5);
+        wait100ms(SLEEP_DELAY * 10);
+        wait100ms(200); // waits for serial to be flushed
+        DBG("# m: Wake up from cpu wait sleep\r\n")
 #endif
 
     }

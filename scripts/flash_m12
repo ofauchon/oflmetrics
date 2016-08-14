@@ -4,11 +4,11 @@ export LANG=C
 
 [ "$1" == "-h" -o "$1" == "" ] && {
 echo "M12/Econotag Flasher: usage ./flash_m12 (m12|econnotag|redbee_custom) <firmware.bin> <node_id> "
-echo "                      ex:   ./flash_m12 m12 blink.bin 99"
+echo "                      ex:   ./flash_m12 m12 blink.bin"
 exit 1
 }
 
-[ "$1" != "" -a "$2" != "" -a "$3" != "" ] && {
+[ "$1" != "" -a "$2" != "" ] && {
 
   LIBMC1322X=../libmc1322x
   TOOLS=${LIBMC1322X}/tools
