@@ -45,7 +45,7 @@ int8_t read_config(config_t *t)
         if (err) return -2; 
 
         if (buf[0]!=0xF0 && buf[1]!= 0x0F) {
-            DBG("NO 0xF00F signature in NVM ")
+            DBG("! no_conf_sig_nvm\r\n")
             return -3; // NO CONFIG SIGNATURE
         }
 
@@ -100,16 +100,18 @@ int8_t write_config(config_t *t)
 
 void default_config(config_t *myconfig)
 {
-	// Mac 0x01020304
-            myconfig->smac[0]=0x01;myconfig->smac[1]=0x02;myconfig->smac[2]=0x03;myconfig->smac[3]=0x04;
+    // Signature ()
+            myconfig->signature[0]=0xF0; myconfig->signature[1]=0x0F; 	// 0xF00F when present
+    // Mac address
+            myconfig->smac[0]=0x00;myconfig->smac[1]=0x00;myconfig->smac[2]=0x00;myconfig->smac[3]=DEFAULT_NODENO;
 	// Power 0x12
             myconfig->txpower=0x12;
 	// Channel 0 
             myconfig->radiochan=0x00;
 	// Capabilities 0xFFFF
-            myconfig->capa[0]=0xFF;myconfig->capa[1]=0xFF;
-	// Signature
-            myconfig->signature[0]=0xF0; myconfig->signature[1]=0x0F; 
+            myconfig->capa[0]=CAPA_TEMP; 
+            myconfig->capa[1]=0x00;
+
 	// When 1: this means the board was tuned OFF ON OFF  in a short interval
             myconfig->low_uptime_counter=0; 
 }
@@ -121,16 +123,16 @@ void default_config(config_t *myconfig)
  */
 void dump_config(config_t myconfig)
 {
-    printf("- signature: 0x%02X%02X\r\n", myconfig.signature[0] ,myconfig.signature[1] );
-    printf("- txpower: 0x%02X, radiochan: 0x%02X\r\n", myconfig.txpower ,myconfig.radiochan );
-    printf("- low_uptime_flag: 0x%02X, low_uptime_counter: 0x%02X\r\n", myconfig.low_uptime_flag ,myconfig.low_uptime_counter );
-    printf("- smac:0x%02X%02X%02X%02X\r\n capa:0x%02X%02X", myconfig.smac[0], myconfig.smac[1],myconfig.smac[2],myconfig.smac[3], myconfig.capa[0], myconfig.capa[1]);
-    printf("- securekey:0x");
+    DBG("- signature: 0x%02X%02X\r\n", myconfig.signature[0] ,myconfig.signature[1] );
+    DBG("- txpower: 0x%02X, radiochan: 0x%02X\r\n", myconfig.txpower ,myconfig.radiochan );
+    DBG("- low_uptime_flag: 0x%02X, low_uptime_counter: 0x%02X\r\n", myconfig.low_uptime_flag ,myconfig.low_uptime_counter );
+    DBG("- smac:0x%02X%02X%02X%02X\r\n capa:0x%02X%02X", myconfig.smac[0], myconfig.smac[1],myconfig.smac[2],myconfig.smac[3], myconfig.capa[0], myconfig.capa[1]);
+    DBG("- securekey:0x");
     int i; 
     for (i=0;i<7;i++){
-        printf("%02X ",myconfig.securekey[i]);
+        DBG("%02X ",myconfig.securekey[i]);
     }
-    printf("\r\n");
+    DBG("\r\n");
 }
 
 
