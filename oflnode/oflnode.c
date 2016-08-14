@@ -30,6 +30,9 @@ You should have received a copy of the GNU General Public License
 #include <adc.h>
 
 #define SERIAL_SPEED 115200
+// #define HIBERNATE
+#define HIBERNATE_DELAY 60
+
 
 config_t myconfig; 
 
@@ -52,10 +55,10 @@ volatile uint8_t state_init;
  */
 void process_rx_packet(volatile packet_t *prx)
 {
-    DBG("Packet received.\r\n");
+    DBG("@process_rx_packet\r\n")
     if (prx->length >0 ){  
             paquet pqrx;
-            printf("RX:%s\r\n",pqrx.data);
+            printf("  RX Payload: '%s'\r\n",pqrx.data);
             packet2paquet(prx, &pqrx);
 
             // FIXME : hardcoded size of 100 below
@@ -160,7 +163,8 @@ void wait100ms(uint32_t delta){
 
 
 uint8_t get_lumi(uint16_t *plumi){
-#define LUMICALC_SAMPLES 5
+    DBG("@get_lumi\r\n")
+    #define LUMICALC_SAMPLES 5
     uint32_t tt =0;
     uint8_t tc =0;
     for (tc=0; tc<LUMICALC_SAMPLES; tc++){
@@ -179,8 +183,9 @@ uint8_t get_lumi(uint16_t *plumi){
  * Read as much as samples as period length, to get min, max & determine amplitude
  */
 uint8_t get_power(uint16_t *ppower){
-#define POWER_SAMPLES 5
-#define POWER_ADC_CHAN 1
+    DBG("@get_power\r\n")
+    #define POWER_SAMPLES 5
+    #define POWER_ADC_CHAN 1
     uint32_t tmin=0, tmax =0;
     uint8_t tc =0;
     for (tc=0; tc<POWER_SAMPLES; tc++){
@@ -202,6 +207,7 @@ uint8_t get_power(uint16_t *ppower){
 
 uint16_t batteryLevel(void){
 
+DBG("@batteryLevel\r\n")
     uint8_t i,j;
     uint32_t adc[9];
     adc_init();
@@ -224,6 +230,7 @@ uint16_t batteryLevel(void){
 void hibernate(uint8_t p_sec)
 {
 
+    DBG("@Hibernate\r\n")
     // Hibernate (See sleep example of libmc1322x for details
     *CRM_WU_CNTL = 0x1;
     *CRM_WU_TIMEOUT =  p_sec * 2000; /* 60s */
@@ -238,6 +245,7 @@ void hibernate(uint8_t p_sec)
 
 void reset_watchdog(void)
 {
+    DBG("@reset_watchdog\r\n")
     cop_timeout_ms(1);
     CRM->COP_CNTLbits.COP_EN = 1;
     while (1) continue;
@@ -270,7 +278,7 @@ void main(void) {
 
     // UART
     if (DODEBUG) uart_init(UART1, SERIAL_SPEED);
-    DBG("OFLnode start\r\n");
+    DBG("#m: OFLnode start\r\n");
 
     // uController init
     trim_xtal();
@@ -278,38 +286,52 @@ void main(void) {
 
     state_init=0; 
 
+      DBG("# m:k1\r\n");
     // Read config from NVR if possible
     int res;
     res=read_config(&myconfig);
     if ( res < 0) { // Problem reading configuration
-        DBG("read_config NOT OK : err:%d , using defaults\r\n", res);
+        DBG("! m:error_reading_conf (%d)\r\n",res);
+
         if ( res == -3){ // No configuration signature in NVR
-	    default_config(&myconfig);
+	       default_config(&myconfig);
+            res=write_config(&myconfig);
+            if (res<0) {
+                DBG("! m:error_wr_cnf_nvm\r\n");
+            } else 
+               DBG("# m:default_conf_write_ok\r\n");
+
         }
     }
 
-    // Ugly part of the boot process : Detecting reset to factory
-    if (myconfig.low_uptime_flag==0x01){  // NVM tells us the previous runtime was short ... 
-        myconfig.low_uptime_counter++;   
-        if (myconfig.low_uptime_counter> RESET_REBOOT_COUNT) state_init=1;  // Too much ON/OFF/ON/OFF short cycles, we enter init state
+/*
+TODO: rewrite this shit
+
+    if (myconfig.low_uptime_flag==0x01){  // NVM tells us previous uptime was short
+        myconfig.low_uptime_counter++;    
+        if (myconfig.low_uptime_counter> RESET_REBOOT_COUNT) state_init=1;  // Too much ON/OFF/ON/OFF short cycles
     } else  {
         myconfig.low_uptime_counter=0;   // The device 
     }
 
 
     if(state_init==0){ // Update counters only if not already in init mode
-	int z; 
-	for (z=0;z<20;z++){ // Blink 20x to notify for NVR config reset
+      DBG("# m:state_init=0\n");
+
+        int z; 
+	   for (z=0;z<10;z++){ // Blink 20x to notify for NVR config reset
             digitalWrite(RX_LED_PIN, 1); wait100ms(2);
             digitalWrite(RX_LED_PIN, 0); wait100ms(2);
-	}
+	   }
         myconfig.low_uptime_flag=0x1;
         res=write_config(&myconfig);
-    }else { 
+    }
+    else { 
         DBG ("Reset configuration and write to NVR");
     }
-
+*/
     dump_config(myconfig);
+    DBG("# m:configuration DONE\r\n");
 
 
 
@@ -317,7 +339,6 @@ void main(void) {
 
 
     // Init Radio
-    DBG("Init radio\r\n");
     maca_init();
     set_channel(myconfig.radiochan);
     set_power(myconfig.txpower);
@@ -327,36 +348,55 @@ void main(void) {
     setPinGpio(TX_LED_PIN, GPIO_DIR_OUTPUT);
 
     // Init sensors depending on configuration
-    if ( ( myconfig.capa[0] | CAPA_TEMP  )   ) ds1820_start();
-    if ( ( myconfig.capa[0] | CAPA_LIGHT  )   )   adc_init();
-    if ( ( myconfig.capa[0] | CAPA_POWER )  ) adc_init();
+    if ( ( myconfig.capa[0] & CAPA_TEMP  )   ) ds1820_start();
+    if ( ( myconfig.capa[0] & CAPA_LIGHT  )   )   adc_init();
+    if ( ( myconfig.capa[0] & CAPA_POWER )  ) adc_init();
 
     maca_on();
+    DBG("# m: hardware init DONE\r\n");
 
+    int report_err;
     // Main loop
     while(1){
-        DBG("Main loop cycle #%u\r\n",(unsigned int) cntr);
+        //DBG("Main loop cycle #%u\r\n",(unsigned int) cntr);
 
-        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer
+        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer ()
+        report_err=0; 
 
         // Add battery information every 10 cycles
         if ( (cntr_msg_sent % 10 ) == 0 ){
+            DBG("Processing battery Level\r\n");
             uint16_t t_batl= batteryLevel();
             sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;BATLEV:%u;", FW_VER, t_batl  );
         }
 
         // Add temperature information if node has capability
-        if ( myconfig.capa[0] | CAPA_TEMP ) {
+        if ( myconfig.capa[0] & CAPA_TEMP ) 
+        {
+            DBG("# m:Processing CAPA_TEMP\r\n");
+            wait100ms(20); // Wait 2s so we have time to wake up from hibernation   
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
-            if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac) == 1){
-                sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%c%d.%02d;",
+            if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac) == 1)
+            {
+                if (m_cel == 85){
+                    DBG("! m: CAPA_TEMP value is 85, skipping value\r\n");
+                    report_err=11; 
+                } else {
+                    sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%c%d.%02d;",
                         m_cel_sign == 1 ? '-' : '+',
                         m_cel, m_cel_frac);
+                }
+
+            } else {
+                DBG("! m: ds1820_readTemp Error\r\n")
+                report_err=12; 
             }
+
         }
 
         // Add light level information if node has capability
-        if ( myconfig.capa[0] | CAPA_LIGHT ) {
+        if ( myconfig.capa[0] & CAPA_LIGHT ) {
+            DBG("Processing CAPA_LIGHT\r\n");
             uint16_t m_lumi;
             if (get_lumi(&m_lumi) == 1){
                 sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "LUMI:+%05u;",m_lumi);
@@ -364,13 +404,17 @@ void main(void) {
         }
 
         // Add power information if node has capability
-        if ( myconfig.capa[0] | CAPA_POWER ) {
+        if ( myconfig.capa[0] & CAPA_POWER ) {
+            DBG("Processing CAPA_POWER\r\n");
             uint16_t m_power;
             if ( get_power(&m_power) == 1 ){
                 sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "POWER:+%05u;",m_power);
 
             }
         }
+
+        // Handle error reporting
+        if (report_err>0) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "ERROR:+%02d;",report_err);
  
         // Compute data length
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
@@ -380,13 +424,13 @@ void main(void) {
         // Time to RX
         while (( rxp = rx_packet()))
         {
-            DBG("Packet received\r\n");
+            //DBG("Packet received\r\n");
 
             // DO SOMETHING
             // Blink LED x2
-            digitalWrite(RX_LED_PIN, 1); wait100ms(2);
-            digitalWrite(RX_LED_PIN, 0); wait100ms(2);
-            digitalWrite(RX_LED_PIN, 1); wait100ms(2);
+            digitalWrite(RX_LED_PIN, 1); wait100ms(1);
+            digitalWrite(RX_LED_PIN, 0); wait100ms(1);
+            digitalWrite(RX_LED_PIN, 1); wait100ms(1);
             digitalWrite(RX_LED_PIN, 0);
 
             process_rx_packet(rxp);
@@ -396,11 +440,13 @@ void main(void) {
         // Send packet data
         txp = get_free_packet();
         if (txp == NULL) {
-            DBG("No radio free_packets...\r\n");
+            DBG("! m:No radio free_packets...\r\n");
             goto noprocess;
         } else {
-          //  DBG("Send packet\r\n");
+            DBG("# m:Time to TX packet ('%s')\r\n", tx_paquet.data);
             memcpy (tx_paquet.smac, myconfig.smac, 4);
+            tx_paquet.dmac[0]=0xFF;tx_paquet.dmac[1]=0xFF; // Broadcast
+            tx_paquet.dmac[2]=0xFF;tx_paquet.dmac[3]=0xFF; // Broadcast
             if (paquet2packet( &tx_paquet,txp)){
                 tx_packet(txp);
                 cntr_msg_sent++;
@@ -409,7 +455,7 @@ void main(void) {
 
 	// If 200 main cycles were executed, clear low uptime flag in NVR
         if (myconfig.low_uptime_flag==0x01 &&  cntr > 200 ){
-            DBG("Clean low_uptime_counter flag\r\n");
+            DBG("# m:Clean low_uptime_counter flag\r\n");
             myconfig.low_uptime_flag=0x00; 
             write_config(&myconfig);
         }
@@ -425,8 +471,10 @@ noprocess:
 
 // We can either use powersave functions, or sleep.
 #ifdef HIBERNATE
-        hibernate(HIBERNATE_DELAY);wait100ms(2);
+        DBG("# m: Sleep: Hibernate %d secs \r\n", HIBERNATE_DELAY)
+        wait100ms(2);hibernate(HIBERNATE_DELAY);wait100ms(2); // waits for serial to be flushed
 #else
+        DBG("# m: Sleep: System Wait %d secs \r\n", HIBERNATE_DELAY)
         wait100ms(HIBERNATE_DELAY * 10);
 #endif
 
