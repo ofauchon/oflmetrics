@@ -32,9 +32,9 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     if (val.startsWith("+") ) val.remove(0,1);
 
     // InfluxDB payload (https://docs.influxdata.com/influxdb/v0.13/guides/writing_data/)
-    QByteArray jsonString = QString(tr("sensors,id=RDB_%1,type=%2 value=%3")).arg(node).arg(type).arg(val).toLatin1();
-    QByteArray postDataSize = QByteArray::number(jsonString.size());
-    qDebug("PacketProcessor: InfluxDb message: '%s' length: %d", qPrintable(jsonString), jsonString.size());
+    QByteArray payload = QString(tr("sensors,id=RDB_%1,type=%2 value=%3")).arg(node).arg(type).arg(val).toLatin1();
+    QByteArray postDataSize = QByteArray::number(payload.size());
+    //qDebug("PacketProcessor: InfluxDb message: '%s' length: %d", qPrintable(payload), payload.size());
 
 
     QUrl req(config->influxdb_url);
@@ -43,9 +43,9 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
     request.setRawHeader("Content-Length", postDataSize);
     request.setRawHeader("User-Agent", "oflbridge");
 
-    nam->post( request, jsonString);
+    nam->post( request, payload);
 
-    qDebug("PacketProcessor: InfluxDb destination: '%s'", qPrintable(config->influxdb_url));
+    qDebug("PacketProcessor: InfluxDb message '%s' sent to '%s'", qPrintable(payload), qPrintable(config->influxdb_url));
 
 }
 
@@ -53,6 +53,7 @@ void PacketProcessor::influx_sendmetric(QString node, QString type, QString val)
 
 void PacketProcessor::insertPacket(Packet *p)
 {
+    qDebug("---");
     qDebug("PacketProcessor: SRC:%s DST:%s MSG:'%s'",
            qPrintable(p->src_node_id), qPrintable(p->dst_node_id), qPrintable(p->msg));
 
@@ -64,7 +65,7 @@ void PacketProcessor::insertPacket(Packet *p)
 
         QString cap_type = re.cap(1).toLower();
         QString cap_val = re.cap(2);
-        qDebug(QString("PacketProcessor: Found message : ID:%1 TYPE:%2 VALUE:%3").arg(p->dst_node_id).arg(cap_type).arg(cap_val).toStdString().c_str() );
+ //       qDebug(QString("PacketProcessor: Found message : ID:%1 TYPE:%2 VALUE:%3").arg(p->dst_node_id).arg(cap_type).arg(cap_val).toStdString().c_str() );
 
         if (config->influxdb_url != "" ) influx_sendmetric(p->src_node_id, cap_type, cap_val);
 
@@ -108,13 +109,12 @@ void PacketProcessor::insertPacket(Packet *p)
 */
     void PacketProcessor::replyFinished(QNetworkReply* reply) {
         int httpStatus = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        qDebug() << "PacketProcessor: Finished "  << reply->error() << " status:" << httpStatus;
+        //qDebug() << "PacketProcessor: Finished "  << reply->error() << " status:" << httpStatus;
     if(reply->error())
     {
         qDebug() << "PacketProcessor: ERROR! " << reply->errorString();
-    } else {
-	qDebug() << "PacketProcessor: HTTP Response body:" << reply->readAll();
-	}
+	qDebug() << "PacketProcessor: HTTP Code: " << httpStatus <<", Response body:" << reply->readAll();
+    } 
     reply->deleteLater();
     }
 
