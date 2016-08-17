@@ -17,7 +17,7 @@
  */
 void ds1820_start(void) {
     DBG("ds1820_start\r\n")
-    rtc_init_osc(0);
+    //rtc_init_osc(0); We don't use RTC 
 
     setPinGpio(TEMP_POWER_PIN, GPIO_DIR_OUTPUT); // Configure GPIO as output
     digitalWrite(TEMP_POWER_PIN, 1);             // Set High
@@ -27,6 +27,8 @@ void ds1820_start(void) {
     delayMicroseconds(500);
     digitalWrite(TEMP_PIN, 1);              // Set high for 500 us
     delayMicroseconds(500);
+
+
 }
 
 void ds1820_stop(void){
@@ -34,7 +36,7 @@ void ds1820_stop(void){
 }
 
 int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
-    DBG("ds1820_readTemp\r\n")
+    //DBG("ds1820_readTemp\r\n")
 
     uint8_t sp[9];              // scratchbox
     int16_t temperature = 0;
@@ -53,7 +55,7 @@ int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
     uint8_t computeCrc8 = crc8 (sp, 8);
 
     if (DODEBUG){
-		printf("DS1820 pkt dump:");
+		printf("ds1820 sequence:");
         int k; for (k=0;k<9;k++){printf("%02X ",sp[k]);}
 		printf("\r\n");
 	}

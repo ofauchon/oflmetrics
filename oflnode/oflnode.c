@@ -22,7 +22,6 @@ You should have received a copy of the GNU General Public License
 #include <stdio.h>
 
 #include "libs/config.h"
-#include "libs/lcd.h"
 #include "libs/ds1820.h"
 #include "libs/utils.h"
 #include "libs/utils-paquet.h"
@@ -30,19 +29,19 @@ You should have received a copy of the GNU General Public License
 #include <adc.h>
 
 #define SERIAL_SPEED 115200
-#define DEEP_SLEEP
+#define DEEP_SLEEP 1  // 1 For hardware sleep, 0 for simple cpu loop sleep
 #define SLEEP_DELAY 60
 
-// ID of device
-#ifndef NODE_NO
+// Node ID 
+#ifndef NODE_ID
 #warning '** Using default NODE_NO=0x99'
-#define NODE_NO 0x99
+#define NODE_ID 0x99
 #endif
 
 config_t myconfig; 
 
 // Global variables
-volatile uint32_t cntr, cntr_msg_sent;
+volatile uint32_t tmr_cntr, cntr_msg_sent;
 volatile uint8_t clock_d,clock_h,clock_m,clock_s, clock_100ms;
 
 // RX/TX paquet 
@@ -106,7 +105,7 @@ void maca_rx_callback(volatile packet_t *p) {
  */
 void tmr0_isr(void)
 {
-    cntr++;
+    tmr_cntr++;
     clock_100ms+=1;
 
     //process_rx_packets();
@@ -114,7 +113,6 @@ void tmr0_isr(void)
         clock_s++;
         clock_100ms=0;
     }
-
 
     if (clock_s == 60) { clock_m++; clock_s=0;}
     if (clock_m == 60) { clock_h++; clock_m=0;}
@@ -126,6 +124,9 @@ void tmr0_isr(void)
 
 }
 
+/*
+ * Timers initialisation
+ */
 void timers_init(void)
 {
     /* timer setup */
@@ -152,26 +153,26 @@ void timers_init(void)
 
 
 /*
- *  100ms sleep 
+ *  Helper function for 100ms cpu sleep 
  */
 void wait100ms(uint32_t delta){
-    uint32_t oldc = cntr;
+    uint32_t oldc = tmr_cntr;
     uint32_t del;
-    //DBG("start wait\r\n");
-
     do {
-        del = cntr - oldc;
+        del = tmr_cntr - oldc;
     } while (del < delta  );
-    //DBG("D: %d %d \r\n", (int)cntr, (int)oldc);
-
 }
 
-
+/*
+ * Get luminosity / ambian light) level
+ * Use adc to sample light sensor LUMICALC_SAMPLES times
+ * Then returns average value
+ */ 
+#define LUMICALC_SAMPLES 5
 uint8_t get_lumi(uint16_t *plumi){
-    DBG("@get_lumi\r\n")
-    #define LUMICALC_SAMPLES 5
     uint32_t tt =0;
     uint8_t tc =0;
+    adc_init(); wait100ms(1);
     for (tc=0; tc<LUMICALC_SAMPLES; tc++){
         adc_service();
         tt += adc_reading[0];
@@ -193,6 +194,8 @@ uint8_t get_power(uint16_t *ppower){
     #define POWER_ADC_CHAN 1
     uint32_t tmin=0, tmax =0;
     uint8_t tc =0;
+    adc_init(); wait100ms(1);
+
     for (tc=0; tc<POWER_SAMPLES; tc++){
         adc_service();
         if (tc == 0 ) {
@@ -209,15 +212,14 @@ uint8_t get_power(uint16_t *ppower){
 }
 
 
-
-uint16_t batteryLevel(void){
-
-DBG("@batteryLevel\r\n")
+/*
+ * Use ADC to measure battery level
+ */
+uint16_t get_batteryLevel(void){
     uint8_t i,j;
     uint32_t adc[9];
-    adc_init();
     for(j=0;j<9;j++) adc[j] = 0;
-
+    adc_init(); wait100ms(1);
     // Read 8 times to
     for(i=0;i<8;i++) {
         adc_reading[8]=0;
@@ -233,20 +235,35 @@ DBG("@batteryLevel\r\n")
 }
 
 // Hardware deep sleep. 
-void hibernate(uint8_t p_sec)
+void hibernate(uint8_t p_sec, uint8_t p_isdeep)
 {
 
-    // Hibernate (See sleep example of libmc1322x for details
-    *CRM_WU_CNTL = 0x1;
-    *CRM_WU_TIMEOUT =  p_sec * 2000; /* 60s */
-    *CRM_SLEEP_CNTL = 0x71;
-    while((*CRM_STATUS & 0x1) == 0) { continue; }
-    *CRM_STATUS = 1;
-    // Sleep
-    while((*CRM_STATUS & 0x1) == 0) { continue; }
-    *CRM_STATUS = 1;
+    DBG("hibernate: go_sleep (deep_sleep=%u) for %d secs\r\n", p_isdeep, p_sec)
+    rtc_init_osc(0);
+    wait100ms(1); // little wait to let the system rest (flush serial ?)
 
+    if (p_isdeep){
+        // Hibernate (See sleep example of libmc1322x for details
+        *CRM_WU_CNTL = 0x1;
+        *CRM_WU_TIMEOUT =  p_sec * 2000; /* 60s */
+        *CRM_SLEEP_CNTL = 0x71;
+        while((*CRM_STATUS & 0x1) == 0) { continue; }
+        *CRM_STATUS = 1;
+        // Sleep
+        while((*CRM_STATUS & 0x1) == 0) { continue; }
+        *CRM_STATUS = 1;
+    } else {
+            wait100ms(SLEEP_DELAY * 10); // Simple CPU Loop
+    }
+
+
+
+    wait100ms(20); // Wait for hardware to wakeup properly (2sec ??? FIXME: find correct value)
+    DBG("hibernate: wake_up (deep_sleep=%u) done\r\n", p_isdeep)
 }
+
+
+
 
 void reset_watchdog(void)
 {
@@ -265,12 +282,9 @@ void main(void) {
     volatile packet_t *txp;
     volatile packet_t *rxp;
 
-    // Mac address
-    tx_paquet.dmac[0] = 0xFF; tx_paquet.dmac[1] = 0xFF;   tx_paquet.dmac[2] = 0xFF;  tx_paquet.dmac[3] = 0xFF;
-
-    cntr=0;
+    tmr_cntr=0;
     cntr_msg_sent=0;
-
+    //  state_init=0; 
 
     // Wall clock
     clock_h=0;
@@ -289,10 +303,8 @@ void main(void) {
     trim_xtal();
     vreg_init();
 
-    state_init=0; 
-
-      DBG("# m:k1\r\n");
-    // Read config from NVR if possible
+    // Read config from NVM if possible
+    DBG("# m:try to read config from NVM\r\n");
     int res;
     res=read_config(&myconfig);
     if ( res < 0) { // Problem reading configuration
@@ -300,7 +312,7 @@ void main(void) {
 
         if ( res == -3){ // No configuration signature in NVR
 	       default_config(&myconfig);
-           myconfig.smac[3]=NODE_NO;  // Patch default config with NODE_NO 
+           myconfig.smac[3]=NODE_ID;  // Patch default config with NODE_NO 
 
             res=write_config(&myconfig);
             if (res<0) {
@@ -338,9 +350,6 @@ TODO: rewrite this shit
     }
 */
     dump_config(myconfig);
-    DBG("# m:configuration DONE\r\n");
-
-
 
 
 
@@ -354,10 +363,6 @@ TODO: rewrite this shit
     setPinGpio(RX_LED_PIN, GPIO_DIR_OUTPUT);
     setPinGpio(TX_LED_PIN, GPIO_DIR_OUTPUT);
 
-    // Init sensors depending on configuration
-    if ( ( myconfig.capa[0] & CAPA_TEMP  )   ) ds1820_start();
-    if ( ( myconfig.capa[0] & CAPA_LIGHT  )   )   adc_init();
-    if ( ( myconfig.capa[0] & CAPA_POWER )  ) adc_init();
 
     maca_on();
     DBG("# m: hardware init DONE\r\n");
@@ -365,24 +370,31 @@ TODO: rewrite this shit
     int report_err;
     // Main loop
     while(1){
-        //DBG("Main loop cycle #%u\r\n",(unsigned int) cntr);
+        //DBG("Main loop cycle #%u\r\n",(unsigned int) tmr_cntr);
 
         memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer ()
         report_err=0; 
 
+        // Append capability to frame (For debug)
+        if (DODEBUG) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "CAPA:%02X%02X;",myconfig.capa[1], myconfig.capa[0]);
+
         // Add battery information every 10 cycles
-        if ( (cntr_msg_sent % 10 ) == 0 ){
+        if ( cntr_msg_sent == 0 ){
             DBG("Processing battery Level\r\n");
-            uint16_t t_batl= batteryLevel();
+            uint16_t t_batl= get_batteryLevel();
             sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;BATLEV:%u;", FW_VER, t_batl  );
         }
 
         // Add temperature information if node has capability
         if ( myconfig.capa[0] & CAPA_TEMP ) 
         {
-            DBG("# m:Processing CAPA_TEMP\r\n");
+            DBG("# m:Processing CAPA_TEMP (30s sleep before action)\r\n");
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
-            if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac) == 1)
+            ds1820_start();
+            wait100ms(30);
+            ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac); // Fake read. Resume from hibernation fucks this 1st read... FIXME 
+            wait100ms(30);
+            if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac))
             {
                 if (m_cel == 85){
                     DBG("! m: CAPA_TEMP value is 85, skipping value\r\n");
@@ -397,6 +409,8 @@ TODO: rewrite this shit
                 DBG("! m: ds1820_readTemp Error\r\n")
                 report_err=12; 
             }
+            ds1820_stop(); // Don't forget to shut down the ds1820 so 
+
 
         }
 
@@ -412,6 +426,7 @@ TODO: rewrite this shit
         // Add power information if node has capability
         if ( myconfig.capa[0] & CAPA_POWER ) {
             DBG("Processing CAPA_POWER\r\n");
+            adc_init();
             uint16_t m_power;
             if ( get_power(&m_power) == 1 ){
                 sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "POWER:+%05u;",m_power);
@@ -449,7 +464,7 @@ TODO: rewrite this shit
         txp = get_free_packet();
         if (txp == NULL) {
             DBG("! m:No radio free_packets...\r\n");
-            goto noprocess;
+            goto the_end;
         } else {
             DBG("# m:Time to TX packet ('%s')\r\n", tx_paquet.data);
             memcpy (tx_paquet.smac, myconfig.smac, 4);
@@ -462,35 +477,28 @@ TODO: rewrite this shit
         }
 
 	// If 200 main cycles were executed, clear low uptime flag in NVR
-        if (myconfig.low_uptime_flag==0x01 &&  cntr > 200 ){
+        if (myconfig.low_uptime_flag==0x01 &&  tmr_cntr > 200 ){
             DBG("# m:Clean low_uptime_counter flag\r\n");
             myconfig.low_uptime_flag=0x00; 
             write_config(&myconfig);
         }
 
         // Reset every 10h to avoid freeze bug
-        if (cntr_msg_sent>600) reset_watchdog();
+        if (cntr_msg_sent>600) {
+            DBG("Time to reset watchdog...\r\n")
+            reset_watchdog();
+            wait100ms(30);
+        }
 
-noprocess:
+
+
+the_end:
         // Blink LED
         digitalWrite(RX_LED_PIN, 1);
         wait100ms(2);
         digitalWrite(RX_LED_PIN, 0);
-
-#ifdef DEEP_SLEEP // Hardware sleep (low consumption)
-        DBG("# m: Going to deep sleep for %d secs \r\n", SLEEP_DELAY)
-        wait100ms(5);
-        hibernate(SLEEP_DELAY);
-        wait100ms(200); // waits for serial to be flushed
-        DBG("# m: Wake up from deep sleep done\r\n")
-
-#else   // Simple CPU Wait
-        DBG("# m: Going to soft sleep (cpu wait) for %d secs \r\n", SLEEP_DELAY)
-        wait100ms(5);
-        wait100ms(SLEEP_DELAY * 10);
-        wait100ms(200); // waits for serial to be flushed
-        DBG("# m: Wake up from cpu wait sleep\r\n")
-#endif
+        //if ((cntr_msg_sent % 3)==0) { hibernate(SLEEP_DELAY, DEEP_SLEEP); }
+       hibernate(SLEEP_DELAY, DEEP_SLEEP);
 
     }
 
