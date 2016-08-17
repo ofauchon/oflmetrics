@@ -20,23 +20,23 @@
 Configuration ib NVR
 NVR @ offset 0x1f000
 
-     smac    txpower radiochan capabilities  reserved       securekey (8)
-|-----------|   |         |           |       |             |--------------|
- XX XX XX XX   XX        XX          XX      XX             XX ... 32 ... XX
+ sig         smac    txpower radiochan capabilities  reserved       securekey (8)
+|   |  |---------|   |         |           |       |             |--------------|
+XX XX  XX XX XX XX   XX        XX          XX      XX            XX ... 32 ... XXXX
 */
  
 
 /* PACKET STUFF */
 typedef struct {
-	uint8_t		signature[2];
-        uint8_t         smac[4];
-        uint8_t         txpower;
-        uint8_t         radiochan;
-        uint8_t         securekey[32];
-        uint8_t         capa[2];
+	uint8_t		signature[2];   	// F00F when eeprom contains data
+        uint8_t         smac[4];		// ID (MAC) of node 
+        uint8_t         txpower;		// txpower
+        uint8_t         radiochan;		// Current radio channel 
+        uint8_t         capa[2];		// Capabilities
+        uint8_t         securekey[32];		// Shared key
 
-        uint8_t 	low_uptime_flag;    // Flag used to detect fast OFF-ON-OFF of the board
-        uint8_t 	low_uptime_counter; // After a couple of ON/OFF/ON, we may reset to factory  
+        uint8_t 	low_uptime_flag;    	// Flag used to detect fast OFF-ON-OFF of the board
+        uint8_t 	low_uptime_counter; 	// After a couple of ON/OFF/ON, we may reset to factory  
 } config_t;
 
 

@@ -16,16 +16,19 @@
  * Setup 1wire
  */
 void ds1820_start(void) {
-    rtc_init_osc(0);
+    DBG("ds1820_start\r\n")
+    //rtc_init_osc(0); We don't use RTC 
 
-    setPinGpio(TEMP_POWER_PIN, GPIO_DIR_OUTPUT); // bring low for 500 us
-    digitalWrite(TEMP_POWER_PIN, 1);
+    setPinGpio(TEMP_POWER_PIN, GPIO_DIR_OUTPUT); // Configure GPIO as output
+    digitalWrite(TEMP_POWER_PIN, 1);             // Set High
 
-    setPinGpio(TEMP_PIN, GPIO_DIR_OUTPUT); // bring low for 500 us
-    digitalWrite(TEMP_PIN, 0);
+    setPinGpio(TEMP_PIN, GPIO_DIR_OUTPUT);  // Configure GPIO as output
+    digitalWrite(TEMP_PIN, 0);              // Set low for 500 uS
     delayMicroseconds(500);
-    digitalWrite(TEMP_PIN, 1);
+    digitalWrite(TEMP_PIN, 1);              // Set high for 500 us
     delayMicroseconds(500);
+
+
 }
 
 void ds1820_stop(void){
@@ -33,6 +36,7 @@ void ds1820_stop(void){
 }
 
 int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
+    //DBG("ds1820_readTemp\r\n")
 
     uint8_t sp[9];              // scratchbox
     int16_t temperature = 0;
@@ -43,19 +47,20 @@ int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
     OneWireReset(TEMP_PIN);
     OneWireOutByte(TEMP_PIN, 0xcc); // skip rom  : address all devices
     OneWireOutByte(TEMP_PIN, 0x44); // perform temperature conversion
-    delayMicroseconds(750);
+    delayMicroseconds(1000);         // 750ms should be OK, we set 1s for security
     OneWireReset(TEMP_PIN);
     OneWireOutByte(TEMP_PIN, 0xcc); // skip rom
-    OneWireOutByte(TEMP_PIN, 0xbe); // read datas
+    OneWireOutByte(TEMP_PIN, 0xbe); // read scratchpad
     uint8_t cc; for (cc=0; cc < 9; cc++) sp[cc] = OneWireInByte(TEMP_PIN);
     uint8_t computeCrc8 = crc8 (sp, 8);
 
-    //if (DODEBUG){
-		//printf("DS1820 pkt dump:");
-        //int k; for (k=0;k<9;k++){printf("%02X ",sp[k]);}
-		//printf("\r\n");
-	//}
+    if (DODEBUG){
+		printf("ds1820 sequence:");
+        int k; for (k=0;k<9;k++){printf("%02X ",sp[k]);}
+		printf("\r\n");
+	}
 
+    DBG("ds1820_readTemp: crc8: read:%02X computed:%02X\r\n", computeCrc8, sp[8])
     if (computeCrc8 == sp[8]){
 
         uint16_t meas = sp[0];  // LSB
@@ -81,6 +86,8 @@ int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
 
         *cel  = (uint8_t)(meas >> 4);
         *cel_frac_bits = (uint8_t)(meas & 0x000F) * 100  /16;
+
+        DBG("ds1820_readTemp: result: cel:%d cel_frac_bits%d\r\n", *cel, *cel_frac_bits)
 
         ret=1;
     }

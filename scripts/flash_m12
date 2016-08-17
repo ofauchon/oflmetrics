@@ -3,7 +3,8 @@
 export LANG=C 
 
 [ "$1" == "-h" -o "$1" == "" ] && {
-echo "M12/Econotag Flasher: usage ./flash_m12 (m12|econnotag|redbee_custom) firmware.bin"
+echo "M12/Econotag Flasher: usage ./flash_m12 (m12|econnotag|redbee_custom) <firmware.bin> <node_id> "
+echo "                      ex:   ./flash_m12 m12 blink.bin"
 exit 1
 }
 
@@ -15,6 +16,7 @@ exit 1
   BBMC=${LIBMC1322X}/tools/ftditools/bbmc
   #FIRMWARE=../ofldongle/ofldongle_m12.bin
   FIRMWARE=$2
+  NODENO=$3
   TTY=/dev/ttyUSB1
 
   if [ "$1" == "m12" ] 	
@@ -23,16 +25,16 @@ exit 1
   elif [ "$1" == "econotag" ] 
   then
     FLASHER=${LIBMC1322X}/tests/flasher_redbee-econotag.bin
-  elif [ "$1" == "redbee_custom" ] 
-  then
-    FLASHER=${LIBMC1322X}/tests/flasher_redbee-econotag.bin
-    BBMC="../tools/bbmc-custom/bbmc-custom -v 0x1457 -p 0x5118 "
-    TTY=/dev/ttyUSB0
   else
-    echo "!  Target can be m12 or econotag"
+    echo "!  Target can be only 'm12' or 'econotag'"
     exit 0; 
   fi 
 
+#NVMoffset 0x1f00
+# Signature + half Mac
+# half Mac + TxPwr + RadioChannel
+# Capabilities + 0x0000 Padding
+##eeprom_init="0x1f00,0xf00f0000,0x00${NODENO}1200,0xffff0000"
 
-  ${TOOLS}/mc1322x-load.pl -t ${TTY} -f ${FLASHER} -s ${FIRMWARE}  -c "sudo ${BBMC} -l redbee-econotag erase; sudo ${BBMC}  -l redbee-econotag reset" -b 200
+  ${TOOLS}/mc1322x-load.pl -t ${TTY} -f ${FLASHER} -s ${FIRMWARE}  -c "sudo ${BBMC} -l redbee-econotag erase; sudo ${BBMC}  -l redbee-econotag reset" -b 200  ${eeprom_init}
 }

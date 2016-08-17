@@ -65,3 +65,11 @@ Please visit http://redwirellc.com to order
 - Please tell me if you do something useful with this code. 
 - I don't sell hardware. go  http://redwirellc.com
 
+
+
+# Q&A 
+
+Q: I get 'make: arm-none-eabi-gcc: Command not found' when 'make'
+A: Unpack arm compiler in arm-2008q3, then add arm-2008q3/bin to your path
+
+
