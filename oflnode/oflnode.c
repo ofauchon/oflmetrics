@@ -21,6 +21,9 @@ You should have received a copy of the GNU General Public License
 #include <string.h>
 #include <stdio.h>
 
+
+#define FW_VER 101
+
 #include "libs/config.h"
 #include "libs/ds1820.h"
 #include "libs/utils.h"
@@ -370,25 +373,24 @@ TODO: rewrite this shit
     int report_err;
     // Main loop
     while(1){
-        //DBG("Main loop cycle #%u\r\n",(unsigned int) tmr_cntr);
+        // This has to be called periodicaly, and avoids a few lockups conditions
+        check_maca();
 
         memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer ()
         report_err=0; 
 
-        // Append capability to frame (For debug)
-        if (DODEBUG) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "CAPA:%02X%02X;",myconfig.capa[1], myconfig.capa[0]);
-
         // Add battery information every 10 cycles
-        if ( cntr_msg_sent == 0 ){
+        if ( cntr_msg_sent == 0 && ((cntr_msg_sent % 10 )==0) ){
             DBG("Processing battery Level\r\n");
             uint16_t t_batl= get_batteryLevel();
-            sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;BATLEV:%u;", FW_VER, t_batl  );
+            sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;CAPA:%02X%02X;BATLEV:%u;", 
+                    FW_VER, myconfig.capa[1], myconfig.capa[0], t_batl  );
         }
 
         // Add temperature information if node has capability
         if ( myconfig.capa[0] & CAPA_TEMP ) 
         {
-            DBG("# m:Processing CAPA_TEMP (30s sleep before action)\r\n");
+            DBG("# m:Processing CAPA_TEMP\r\n");
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
             ds1820_start();
             wait100ms(30);
@@ -443,25 +445,27 @@ TODO: rewrite this shit
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
 
 
-        check_maca();
         // Time to RX
         while (( rxp = rx_packet()))
         {
             //DBG("Packet received\r\n");
 
-            // DO SOMETHING
-            // Blink LED x2
+/*
             digitalWrite(RX_LED_PIN, 1); wait100ms(1);
             digitalWrite(RX_LED_PIN, 0); wait100ms(1);
             digitalWrite(RX_LED_PIN, 1); wait100ms(1);
             digitalWrite(RX_LED_PIN, 0);
 
             process_rx_packet(rxp);
+
+            // Just ignore the RX Packets for now 
+*/
             free_packet(rxp);
         }
 
-        // Send packet data
         txp = get_free_packet();
+
+        // Send packet data
         if (txp == NULL) {
             DBG("! m:No radio free_packets...\r\n");
             goto the_end;
@@ -484,10 +488,9 @@ TODO: rewrite this shit
         }
 
         // Reset every 10h to avoid freeze bug
-        if (cntr_msg_sent>600) {
+        if (cntr_msg_sent>5) {
             DBG("Time to reset watchdog...\r\n")
             reset_watchdog();
-            wait100ms(30);
         }
 
 
@@ -495,7 +498,7 @@ TODO: rewrite this shit
 the_end:
         // Blink LED
         digitalWrite(RX_LED_PIN, 1);
-        wait100ms(2);
+        wait100ms(1);
         digitalWrite(RX_LED_PIN, 0);
         //if ((cntr_msg_sent % 3)==0) { hibernate(SLEEP_DELAY, DEEP_SLEEP); }
        hibernate(SLEEP_DELAY, DEEP_SLEEP);

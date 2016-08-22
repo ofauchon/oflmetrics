@@ -42,7 +42,10 @@
 #define DEFAULT_RADIOCHANNEL 0X00
 #define DEFAULT_NODENO 0x99
 
-#define FW_VER 999
+#ifndef FW_VER
+# define FW_VER 99
+#endif 
+
 #define TEMP_ENABLE  1
 #define LIGHT_ENABLE 0
 #define POWER_ENABLE 0
