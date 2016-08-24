@@ -22,7 +22,7 @@ You should have received a copy of the GNU General Public License
 #include <stdio.h>
 
 
-#define FW_VER 101
+#define FW_VER 102
 
 #include "libs/config.h"
 #include "libs/ds1820.h"
@@ -44,7 +44,7 @@ You should have received a copy of the GNU General Public License
 config_t myconfig; 
 
 // Global variables
-volatile uint32_t tmr_cntr, cntr_msg_sent;
+volatile uint32_t tmr_cntr, cntr_msg_sent, awake_sec, main_loop_count;
 volatile uint8_t clock_d,clock_h,clock_m,clock_s, clock_100ms;
 
 // RX/TX paquet 
@@ -113,6 +113,7 @@ void tmr0_isr(void)
 
     //process_rx_packets();
     if (clock_100ms == 10) {
+        awake_sec++;
         clock_s++;
         clock_100ms=0;
     }
@@ -157,6 +158,7 @@ void timers_init(void)
 
 /*
  *  Helper function for 100ms cpu sleep 
+ *  FIXME: Not sure this works when tmr_cntr is about to overflow
  */
 void wait100ms(uint32_t delta){
     uint32_t oldc = tmr_cntr;
@@ -271,10 +273,49 @@ void hibernate(uint8_t p_sec, uint8_t p_isdeep)
 void reset_watchdog(void)
 {
     DBG("@reset_watchdog\r\n")
+    wait100ms(1); // little wait to let the system rest (flush serial ?)
+
     cop_timeout_ms(1);
     CRM->COP_CNTLbits.COP_EN = 1;
     while (1) continue;
 }
+
+
+void rad_init(void)
+{
+    // Init Radio
+    DBG("# m:radio_init(chan: 0x%02x tx_pw: 0x%02X)\r\n" , myconfig.radiochan, myconfig.txpower);    
+    maca_init();
+    set_channel(myconfig.radiochan);
+    set_power(myconfig.txpower);
+}
+
+void rad_on(void){
+    DBG("# m:radio_on()\r\n");    
+    maca_on(); 
+    //check_maca();
+
+}
+
+void rad_off(void)
+{
+    // Init Radio
+    DBG("# m:radio_off()\r\n");    
+    wait100ms(1); // Time to flush Tx buffers
+    maca_off();
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /*
@@ -287,7 +328,8 @@ void main(void) {
 
     tmr_cntr=0;
     cntr_msg_sent=0;
-    //  state_init=0; 
+    awake_sec=0;      //
+    main_loop_count=0; // #time we did the main look 
 
     // Wall clock
     clock_h=0;
@@ -355,36 +397,32 @@ TODO: rewrite this shit
     dump_config(myconfig);
 
 
-
-
-    // Init Radio
-    maca_init();
-    set_channel(myconfig.radiochan);
-    set_power(myconfig.txpower);
-
     //RX TX LED
+    // FIXME: Write a generic Blink fct
     setPinGpio(RX_LED_PIN, GPIO_DIR_OUTPUT);
     setPinGpio(TX_LED_PIN, GPIO_DIR_OUTPUT);
 
 
-    maca_on();
-    DBG("# m: hardware init DONE\r\n");
-
     int report_err;
     // Main loop
-    while(1){
-        // This has to be called periodicaly, and avoids a few lockups conditions
-        check_maca();
 
-        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Message buffer ()
+    // Init radio
+    rad_init();
+
+    while(1){
+
+        rad_on();
+
+        memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Zero TX message buffer 
         report_err=0; 
 
         // Add battery information every 10 cycles
-        if ( cntr_msg_sent == 0 && ((cntr_msg_sent % 10 )==0) ){
-            DBG("Processing battery Level\r\n");
+        //if ( cntr_msg_sent == 0 && ((cntr_msg_sent % 10 )==0)  ){
+        if ( main_loop_count==0 ||  (main_loop_count%5)==0)  {
+            DBG("# m:Processing battery Level\r\n");
             uint16_t t_batl= get_batteryLevel();
-            sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;CAPA:%02X%02X;BATLEV:%u;", 
-                    FW_VER, myconfig.capa[1], myconfig.capa[0], t_batl  );
+            sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "FWVER:%04d;CAPA:%02X%02X;BATLEV:%u;AWAKE_SEC:%lu;MAIN_LOOP:%lu;", 
+                    FW_VER, myconfig.capa[1], myconfig.capa[0], t_batl, awake_sec , main_loop_count );
         }
 
         // Add temperature information if node has capability
@@ -411,7 +449,7 @@ TODO: rewrite this shit
                 DBG("! m: ds1820_readTemp Error\r\n")
                 report_err=12; 
             }
-            ds1820_stop(); // Don't forget to shut down the ds1820 so 
+            ds1820_stop(); // Don't forget to shut down the ds1820 
 
 
         }
@@ -445,19 +483,13 @@ TODO: rewrite this shit
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
 
 
+
+        check_maca();
         // Time to RX
         while (( rxp = rx_packet()))
         {
             //DBG("Packet received\r\n");
-
-/*
-            digitalWrite(RX_LED_PIN, 1); wait100ms(1);
-            digitalWrite(RX_LED_PIN, 0); wait100ms(1);
-            digitalWrite(RX_LED_PIN, 1); wait100ms(1);
-            digitalWrite(RX_LED_PIN, 0);
-
-            process_rx_packet(rxp);
-
+/*            process_rx_packet(rxp);
             // Just ignore the RX Packets for now 
 */
             free_packet(rxp);
@@ -470,7 +502,7 @@ TODO: rewrite this shit
             DBG("! m:No radio free_packets...\r\n");
             goto the_end;
         } else {
-            DBG("# m:Time to TX packet ('%s')\r\n", tx_paquet.data);
+            DBG("# m:TX packet ('%s')\r\n", tx_paquet.data);
             memcpy (tx_paquet.smac, myconfig.smac, 4);
             tx_paquet.dmac[0]=0xFF;tx_paquet.dmac[1]=0xFF; // Broadcast
             tx_paquet.dmac[2]=0xFF;tx_paquet.dmac[3]=0xFF; // Broadcast
@@ -480,15 +512,17 @@ TODO: rewrite this shit
             }
         }
 
+        rad_off();
 	// If 200 main cycles were executed, clear low uptime flag in NVR
-        if (myconfig.low_uptime_flag==0x01 &&  tmr_cntr > 200 ){
+/*        if (myconfig.low_uptime_flag==0x01 &&  tmr_cntr > 200 ){
             DBG("# m:Clean low_uptime_counter flag\r\n");
             myconfig.low_uptime_flag=0x00; 
             write_config(&myconfig);
         }
+*/
 
         // Reset every 10h to avoid freeze bug
-        if (cntr_msg_sent>5) {
+        if ( (main_loop_count * SLEEP_DELAY) > (60 * 10) ) {
             DBG("Time to reset watchdog...\r\n")
             reset_watchdog();
         }
@@ -500,8 +534,9 @@ the_end:
         digitalWrite(RX_LED_PIN, 1);
         wait100ms(1);
         digitalWrite(RX_LED_PIN, 0);
-        //if ((cntr_msg_sent % 3)==0) { hibernate(SLEEP_DELAY, DEEP_SLEEP); }
-       hibernate(SLEEP_DELAY, DEEP_SLEEP);
+
+        main_loop_count++;
+        hibernate(SLEEP_DELAY, DEEP_SLEEP);
 
     }
 
