@@ -16,7 +16,7 @@
  * Setup 1wire
  */
 void ds1820_start(void) {
-    DBG("ds1820_start\r\n")
+    DBG("ds1820: ds1820_start\r\n")
     //rtc_init_osc(0); We don't use RTC 
 
     setPinGpio(TEMP_POWER_PIN, GPIO_DIR_OUTPUT); // Configure GPIO as output
@@ -32,6 +32,7 @@ void ds1820_start(void) {
 }
 
 void ds1820_stop(void){
+    DBG("ds1820: ds1820_stop\r\n")
     digitalWrite(TEMP_POWER_PIN, 0);
 }
 
@@ -55,12 +56,12 @@ int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
     uint8_t computeCrc8 = crc8 (sp, 8);
 
     if (DODEBUG){
-		printf("ds1820 sequence:");
+		printf("ds1820: sequence ");
         int k; for (k=0;k<9;k++){printf("%02X ",sp[k]);}
 		printf("\r\n");
 	}
 
-    DBG("ds1820_readTemp: crc8: read:%02X computed:%02X\r\n", computeCrc8, sp[8])
+    DBG("ds1820: readTemp: crc8_read:%02X crc8_computed:%02X\r\n", computeCrc8, sp[8])
     if (computeCrc8 == sp[8]){
 
         uint16_t meas = sp[0];  // LSB
@@ -87,7 +88,7 @@ int8_t ds1820_readTemp(uint8_t* subzero, uint8_t* cel, uint8_t* cel_frac_bits){
         *cel  = (uint8_t)(meas >> 4);
         *cel_frac_bits = (uint8_t)(meas & 0x000F) * 100  /16;
 
-        DBG("ds1820_readTemp: result: cel:%d cel_frac_bits%d\r\n", *cel, *cel_frac_bits)
+        DBG("ds1820 readTemp: result: cel:%d cel_frac_bits%d\r\n", *cel, *cel_frac_bits)
 
         ret=1;
     }
