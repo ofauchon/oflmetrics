@@ -22,7 +22,7 @@ int SerialDeviceThread::write(char* pBuf, unsigned int pSize){
 int SerialDeviceThread::readString(char* pBuf, char pStop){
     //this->oDebug("readString with separator '%c'", pStop);
     int ret = LS.ReadString(pBuf,pStop,128,SerialDeviceThread::READ_TMOUT);
-    if (ret>0) oDebug("readString read string: '%s' (%d bytes)", specialChar(pBuf), strlen(pBuf));
+    //if (ret>0) oDebug("readString read string: '%s' (%d bytes)", specialChar(pBuf), strlen(pBuf));
    return ret;
 }
 

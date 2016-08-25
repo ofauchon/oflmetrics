@@ -58,7 +58,7 @@ void PacketProcessor::insertPacket(Packet *p)
            qPrintable(p->src_node_id), qPrintable(p->dst_node_id), qPrintable(p->msg));
 
     // Walk through the packet to find datas;
-    QRegExp re("(TEMP|BATLEV|FWVER|CAPA|ERROR|UPTIME):([^;]+);");
+    QRegExp re("(TEMP|BATLEV|FWVER|CAPA|ERROR|AWAKE_SEC|MAIN_LOOP):([^;]+);");
     int pos=0;
 
     while ((pos = re.indexIn(p->msg, pos)) != -1) {
