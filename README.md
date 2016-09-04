@@ -28,21 +28,24 @@ Current status:
 
 I'll try to write some detailed documentation soon. 
 
-# OFLMetrics in action 
+# OFLMetrics suite in action 
 
-  * OFLnode 
+  * OFLnode firmware running on Redbee Boards
 
 ![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode01.png)
 ![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode02.png)
 ![OFLnode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflnode03.png)
 
-  * OFLbridge
+  * OFLDongle firmware running on Econotag
 
 ![OFLbridge hardware](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/oflbridge01.png)
+
+  * OFLBridge service receiving datas 
+
 ![OFLbridge monitor mode](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/ofldongle_monitor_mode.png)
 
 
-  * InfluxDB & Grafana
+  * InfluxDB time-series database & Grafana visualisation tool
 
 ![OFLbridge to InfluxDB](https://raw.githubusercontent.com/ofauchon/oflmetrics/master/docs/images/grafana01.png)
 

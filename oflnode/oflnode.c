@@ -513,16 +513,26 @@ TODO: rewrite this shit
         }
 
         rad_off();
-	// If 200 main cycles were executed, clear low uptime flag in NVR
-/*        if (myconfig.low_uptime_flag==0x01 &&  tmr_cntr > 200 ){
+
+        /* FIXME: WIP: Reset to factory configuation after x consecutive reboots feature.
+	       Basic idea: low_uptime_flag is used to determine if previous uptime
+           was below defined threshold. If current run last more than the threshold, we have
+           to clear the flag
+
+        if (myconfig.low_uptime_flag==0x01 &&  tmr_cntr > 200 ){
             DBG("# m:Clean low_uptime_counter flag\r\n");
             myconfig.low_uptime_flag=0x00; 
             write_config(&myconfig);
         }
-*/
+        */
 
-        // Reset every 10h to avoid freeze bug
-        if ( (main_loop_count * SLEEP_DELAY) > (60 * 10) ) {
+        /* 
+        Reseting the device every 12h (through watchdog)
+        to fix unknown mcu/radio/code bug
+        (oflnode become mute after hours/days of uptime) 
+        10h = 10 * 60 * 60 
+        */
+        if ( (main_loop_count * SLEEP_DELAY) > (10 * 60 * 60) ) {
             DBG("Time to reset watchdog...\r\n")
             reset_watchdog();
         }
