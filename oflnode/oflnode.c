@@ -22,7 +22,7 @@ You should have received a copy of the GNU General Public License
 #include <stdio.h>
 
 
-#define FW_VER 102
+#define FW_VER 103
 
 #include "libs/config.h"
 #include "libs/ds1820.h"
