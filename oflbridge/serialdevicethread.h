@@ -26,7 +26,6 @@ private:
     static const int BUFFER_SIZE=255;
     static const int READ_TMOUT=100;
     char rx_buf[BUFFER_SIZE];
-    void oDebug(const char* msg, ...);
     int write(char* pBuf, unsigned int pSize);
     int readString(char* pBuf, char pStop);
     int writeString(char* pString);

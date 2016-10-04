@@ -13,23 +13,23 @@ SerialDeviceThread::SerialDeviceThread(Config *pConfig)
 }
 
 int SerialDeviceThread::write(char* pBuf, unsigned int pSize){
-    //this->oDebug("serial write %d bytes to serial", pSize);
+    //qDebug("serial write %d bytes to serial", pSize);
    int ret= LS.Write(pBuf, pSize);
-   if (ret>0) oDebug("serial write returned %d", ret);
+   if (ret>0) qDebug("serial write returned %d", ret);
    return ret;
 }
 
 int SerialDeviceThread::readString(char* pBuf, char pStop){
-    //this->oDebug("readString with separator '%c'", pStop);
+    //qDebug("readString with separator '%c'", pStop);
     int ret = LS.ReadString(pBuf,pStop,128,SerialDeviceThread::READ_TMOUT);
-    //if (ret>0) oDebug("readString read string: '%s' (%d bytes)", specialChar(pBuf), strlen(pBuf));
+    //if (ret>0) qDebug("readString read string: '%s' (%d bytes)", specialChar(pBuf), strlen(pBuf));
    return ret;
 }
 
 int SerialDeviceThread::writeString(char* pString){
-    this->oDebug("writeString '%s'", specialChar(pString));
+    qDebug("writeString '%s'", specialChar(pString));
     int ret = LS.WriteString(pString);
-    if (ret<0) oDebug("writeString returns %d", ret);
+    if (ret<0) qDebug("writeString returns %d", ret);
    return ret;
 }
 
@@ -70,10 +70,10 @@ void SerialDeviceThread::run(){
         switch (state)
         {
         case 0:{
-            oDebug("SerialDeviceTread:: State 0");
+            qDebug("SerialDeviceTread:: State 0");
             int ret = LS.Open(myconfig->serial_path.toStdString().c_str(),myconfig->serial_speed);
             if (ret!=1) {
-                oDebug("SerialDeviceTread:: Can't open serial port %s, wait 3000ms", myconfig->serial_path.toStdString().c_str());
+                qWarning("SerialDeviceTread:: Can't open serial port %s, wait 3000ms", myconfig->serial_path.toStdString().c_str());
                 this->msleep(3000);
                 break;
             }
@@ -82,34 +82,34 @@ void SerialDeviceThread::run(){
             break;
         }
         case 1:{
-            oDebug("SerialDeviceTread:: State 1, send ':dump_human' command");
+            qDebug("SerialDeviceTread:: State 1, send ':dump_human' command");
             if (LS.WriteString(":dump_human\n") <0){
-                oDebug("SerialDeviceTread:: Can't write command to serial port, closing port");
+                qWarning("SerialDeviceTread:: Can't write command to serial port, closing port");
                 LS.Close();
                 state=0;
             } else state++;
             break;
         }
         case 2:{
-            oDebug("SerialDeviceTread:: State 2, waiting for 'OK'");
+            qDebug("SerialDeviceTread:: State 2, waiting for 'OK'");
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret=this->readString(rx_buf,'\n');
             if (ret>0) {
-                //oDebug("SerialDeviceTread:: Receiving %d bytes '%.*s'",ret , ret, rx_buf);
+                //qDebug("SerialDeviceTread:: Receiving %d bytes '%.*s'",ret , ret, rx_buf);
                 if ( strstr(rx_buf,"OK dump_human mode")!=NULL ){
-                   oDebug("SerialDeviceTread:: Now in dump_human mode (State 3) ");
+                   qDebug("SerialDeviceTread:: Now in dump_human mode (State 3) ");
                    state=3;
                 }
             }
             break;
         }
         case 3:{
-            //oDebug("SerialDeviceTread:: State 3, Listening node's message");
+            //qDebug("SerialDeviceTread:: State 3, Listening node's message");
             memset(rx_buf,0,SerialDeviceThread::BUFFER_SIZE);
             int ret= this->readString(rx_buf,'\n');
             if (ret>1) {
                 if (rx_buf[0] == 'R' && rx_buf[1] == 'X'){
-               // oDebug("SerialDeviceTread:: Receiving data '%s'", rx_buf);
+               // qDebug("SerialDeviceTread:: Receiving data '%s'", rx_buf);
                 Packet *p = new Packet();
                 p->initialize(rx_buf+4);
                 emit broadcastPacket(p);
@@ -124,18 +124,6 @@ void SerialDeviceThread::run(){
 
     }//for
 
-}
-
-// Obsolete code  ?
-void SerialDeviceThread::oDebug(const char* msg, ...)
-{
-    fprintf(stdout, "SERIAL: ");
-    va_list ap;
-    va_start(ap,msg);
-    vprintf(msg,ap);
-    va_end(ap);
-    fprintf(stdout, "\n");
-    fflush(stdout);
 }
 
 

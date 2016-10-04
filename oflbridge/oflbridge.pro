@@ -9,9 +9,11 @@ QT       -= gui
 
 COBJ = utils.o
 
-
-LIBS += -L./xPLLib -lxPLLib
-INCLUDEPATH += ./xPLLib
+# XPL needs support. 
+#
+# 
+#LIBS += -L./xPLLib -lxPLLib
+#INCLUDEPATH += ./xPLLib
 
 TARGET = oflbridge
 CONFIG   += console debug
@@ -38,3 +40,15 @@ HEADERS += \
     packet.h \
     config.h \
     xplmanager.h
+
+target.path = /opt/oflbridge
+
+systemctl.path = /usr/lib/systemd/system/
+#systemctl.files = systemctl/oflmetrics/oflmetrics.service
+systemctl.extra = cp systemd/oflbridge.service /usr/lib/systemd/system/oflbridge.service
+
+INSTALLS += target systemctl
+
+QMAKE_INSTALL_FILE = install -m 755 -p -o root -g root
+QMAKE_INSTALL_PROGRAM = install -m 755 -p -o root -g root
+

@@ -9,6 +9,9 @@
 #include <tcpserver.h>
 #include <serialdevicethread.h>
 #include <config.h>
+#include <QMutex>
+
+#include <unistd.h>
 
 #include <QCommandLineOption>
 #include <QCommandLineParser>
@@ -16,6 +19,9 @@
 #define BUFSZ 256
 char in_buf[BUFSZ];
 
+
+	
+static QMutex mutex;
 
 /* PACKET STUFF */
 #define PAQUET_MAX_DATASIZE 128
@@ -29,17 +35,106 @@ typedef struct {
     uint8_t         crc[2];
 } paquet;
 
+Config config;
 
+
+int daemonize(){
+    pid_t pid;
+    pid_t sid;
+
+    qDebug("daemonize: start");
+    pid = fork();  
+
+    if (pid < 0 )
+    { 
+        qFatal("daemonize: Fork failed");
+    	exit(-1);  
+    }
+    if (pid > 0) {  
+	qInfo("daemonize: Fork done"); 
+        exit(EXIT_SUCCESS);  
+    }
+
+    sid = setsid(); 
+    if (sid < 0) {
+	qFatal("daemonize: Fork error (sid<0)"); 
+        exit(1);
+    }
+
+    /* set the working directory to the root directory */  
+    if (chdir ("/") == -1) {
+	qFatal("daemonize: Can't chdir /"); 
+	    exit(1);  
+    }
+
+    /* close all open files--NR_OPEN is overkill, but works */  
+//    for (i = 0; i < NR_OPEN; i++)  close (i);  
+
+    /* redirect fd's 0,1,2 to /dev/null */  
+    open ("/dev/null", O_RDWR);  
+    /* stdin */  
+    dup (0);  
+    /* stdout */  
+    dup (0);  
+    /* stderror */  
+    return true;
+}
+
+
+void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    QByteArray localMsg = msg.toLocal8Bit();
+
+    if (config.log_file.length() >0) {
+    mutex.lock();
+    QDateTime dateTime(QDateTime::currentDateTime());
+
+    QString timeStr(dateTime.toString("dd-MM-yyyy HH:mm:ss:zzz"));
+    QString contextString(QString("(%1, %2)").arg(context.file).arg(context.line));
+
+    QString tDateFic(dateTime.toString("dd-MM-yyyy"));
+    QFile outFile(config.log_file);
+    outFile.open(QIODevice::WriteOnly | QIODevice::Append);
+
+    QTextStream stream(&outFile);
+    stream << timeStr << ": " << msg << endl;
+
+    outFile.close();
+    mutex.unlock();
+    } else {
+
+
+    switch (type) {
+    case QtDebugMsg:
+        fprintf(stderr, "D: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtInfoMsg:
+        fprintf(stderr, "I: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtWarningMsg:
+        fprintf(stderr, "W: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtCriticalMsg:
+        fprintf(stderr, "C: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        break;
+    case QtFatalMsg:
+        fprintf(stderr, "F: %s (%s:%u, %s)\n", localMsg.constData(), context.file, context.line, context.function);
+        abort();
+    }
+
+    }
+}
 
 
 
 int main(int argc, char *argv[])
 {
+    qInstallMessageHandler(myMessageOutput);
+
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("OFLbridge");
     QCoreApplication::setApplicationVersion("1.0");
 
-    Config config;
 
 
 // PARSER
@@ -47,6 +142,9 @@ int main(int argc, char *argv[])
     parser.setApplicationDescription(QCoreApplication::translate("main", "OFLmetrics daemon."));
     parser.addHelpOption(); // Standard -h / --help options.
     parser.addVersionOption(); // Standard -v / --version options.
+
+    QCommandLineOption daemonizeOption(QStringList() << "d" << "daemonize", QCoreApplication::translate("main", "Daemonize (fork to background)"));
+    parser.addOption(daemonizeOption);
 
     QCommandLineOption serialportOption(QStringList() << "s" << "serial_port", QCoreApplication::translate("main", "Dongle serial port"), QCoreApplication::translate("main", "/dev/ttyXXX@speed"));
     parser.addOption(serialportOption);
@@ -71,6 +169,11 @@ int main(int argc, char *argv[])
     const QStringList args = parser.positionalArguments();
 
     // Check that format is a number between 1 and 4.
+
+    if ( parser.isSet(daemonizeOption) ) 
+    { 
+	    daemonize();
+    }
 
     if ( true || parser.value(serialportOption) != "" )   // Check tcp port server
     {
@@ -97,6 +200,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "%s\n", qPrintable(QCoreApplication::translate("main", "Error: influxdb parameter should look like http://influxdb.server/db/database/series?u=USER&p=PASS")));
         parser.showHelp(1);
         }
+    }
+
+    if ( parser.value(logOption) != "" ) {
+	    config.log_file=parser.value(logOption); 
     }
 
     if ( parser.value(sqlOption) != "" )   // Check tcp port server
@@ -142,33 +249,9 @@ int main(int argc, char *argv[])
 
 
 
-    qDebug("Config:\n\
-           Serial '%s':%d\n\
-           STATSD '%s':%d\n\
-           InfluxDB '%s'\n\
-           MySQL: %s:%s@%s:%d:%s\n\
-           Tcpserver_port:%u\n",
+    qInfo("Config: Serial '%s':%d InfluxDB '%s'",
            qPrintable(config.serial_path), config.serial_speed,
-           qPrintable(config.statsd_host), config.statsd_port,
-           qPrintable(config.influxdb_url),
-           qPrintable(config.db_user),qPrintable(config.db_pass),qPrintable(config.db_host),config.db_port,qPrintable(config.db_database),
-           config.tcpserver_port);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+           qPrintable(config.influxdb_url));
 
 
 
