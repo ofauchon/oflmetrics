@@ -36,10 +36,10 @@ You should have received a copy of the GNU General Public License
 #define SLEEP_DELAY 60
 
 // Node ID 
-#ifndef NODE_ID
-#warning '** Using default NODE_NO=0x99'
+//#ifndef NODE_ID
+//#warn '** Using default NODE_NO=0x99'
 #define NODE_ID 0x99
-#endif
+//#endif
 
 config_t myconfig; 
 
