@@ -1,4 +1,6 @@
-BOARD = m12
+CFLAGS := $(CFLAGS) -DNODE_ID=0x23
+
+BOARD = econotag
 MC1322X := ../libmc1322x
 
 # all off the common objects for each target
@@ -36,6 +38,9 @@ submodule:
 .PHONY: submodule
 
 
+
+flash: 
+	 ../scripts/flasher econotag oflnode_econotag.bin
 
 
 

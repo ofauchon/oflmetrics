@@ -21,8 +21,11 @@ You should have received a copy of the GNU General Public License
 #include <string.h>
 #include <stdio.h>
 
+/*
+ * 104 => Enhance ds18x20 measure
+ */
 
-#define FW_VER 103
+#define FW_VER 104
 
 #include "libs/config.h"
 #include "libs/ds1820.h"
@@ -36,10 +39,12 @@ You should have received a copy of the GNU General Public License
 #define SLEEP_DELAY 60
 
 // Node ID 
-//#ifndef NODE_ID
-//#warn '** Using default NODE_NO=0x99'
+#ifndef NODE_ID
+#warning '** Using default NODE_NO=0x99'
 #define NODE_ID 0x99
-//#endif
+#endif
+
+
 
 config_t myconfig; 
 
@@ -416,6 +421,11 @@ TODO: rewrite this shit
         memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Zero TX message buffer 
         report_err=0; 
 
+        if ( myconfig.capa[0] & CAPA_TEMP ){
+			// Early ds1820 power so it's operationnal for measurement later
+            ds1820_start();
+		}
+
         // Add battery information every 10 cycles
         //if ( cntr_msg_sent == 0 && ((cntr_msg_sent % 10 )==0)  ){
         if ( main_loop_count==0 ||  (main_loop_count%5)==0)  {
@@ -430,10 +440,7 @@ TODO: rewrite this shit
         {
             DBG("# m:Processing CAPA_TEMP\r\n");
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
-            ds1820_start();
-            wait100ms(30);
-            ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac); // Fake read. Resume from hibernation fucks this 1st read... FIXME 
-            wait100ms(30);
+            //ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac); // Fake read 
             if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac))
             {
                 if (m_cel == 85){
