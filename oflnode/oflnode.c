@@ -81,8 +81,8 @@ void process_rx_packet(volatile packet_t *prx)
             if ( (n = strncmp((char*)pqrx.data,"PING",pqrx.datalen))  ){
                 sprintf((char*)pqtx.data,"PONG");
             }
-            memcpy(pqtx.smac, myconfig.smac,4); // set smac based on config source mac
-	    memcpy(pqtx.dmac, pqrx.smac,4);     // set dmac based on rx packet smac
+            memcpy(pqtx.smac, myconfig.smac,8); // set smac based on config source mac
+		    memcpy(pqtx.dmac, pqrx.smac,8);     // set dmac based on rx packet smac
             memcpy(pqtx.data,data, strlen(data)); //  copy payload to paquet
             pqtx.datalen=strlen(data); // Set payload size
 
@@ -361,8 +361,10 @@ void main(void) {
         DBG("! m:error_reading_conf (%d)\r\n",res);
 
         if ( res == -3){ // No configuration signature in NVR
-	       default_config(&myconfig);
-           myconfig.smac[3]=NODE_ID;  // Patch default config with NODE_NO 
+			default_config(&myconfig);
+			memset(myconfig.smac,0,8);
+			myconfig.smac[7]=NODE_ID;  						// Patch default config with NODE_NO 
+			myconfig.span[0]=0x0D; myconfig.span[1]=0xF0;  	// Patch default config with PAN F00D
 
             res=write_config(&myconfig);
             if (res<0) {
@@ -427,7 +429,6 @@ TODO: rewrite this shit
 		}
 
         // Add battery information every 10 cycles
-        //if ( cntr_msg_sent == 0 && ((cntr_msg_sent % 10 )==0)  ){
         if ( main_loop_count==0 ||  (main_loop_count%5)==0)  {
             DBG("# m:Processing battery Level\r\n");
             uint16_t t_batl= get_batteryLevel();
@@ -440,7 +441,6 @@ TODO: rewrite this shit
         {
             DBG("# m:Processing CAPA_TEMP\r\n");
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
-            //ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac); // Fake read 
             if (ds1820_readTemp(&m_cel_sign, &m_cel, &m_cel_frac))
             {
                 if (m_cel == 85){
@@ -484,15 +484,11 @@ TODO: rewrite this shit
         // Handle error reporting
         if (report_err>0) sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "ERROR:%04d;",report_err);
  
-
-
         // Compute data length
         tx_paquet.datalen = strlen((char*)tx_paquet.data);
 
-
-
-        check_maca();
         // Time to RX
+        check_maca();
         while (( rxp = rx_packet()))
         {
             //DBG("Packet received\r\n");
@@ -502,18 +498,21 @@ TODO: rewrite this shit
             free_packet(rxp);
         }
 
-        txp = get_free_packet();
-
         // Send packet data
+        txp = get_free_packet();
         if (txp == NULL) {
             DBG("! m:No radio free_packets...\r\n");
             goto the_end;
         } else {
-            DBG("# m:TX packet ('%s')\r\n", tx_paquet.data);
-            memcpy (tx_paquet.smac, myconfig.smac, 4);
-            tx_paquet.dmac[0]=0xFF;tx_paquet.dmac[1]=0xFF; // Broadcast
-            tx_paquet.dmac[2]=0xFF;tx_paquet.dmac[3]=0xFF; // Broadcast
+            DBG("# m: TX Payload: '%s'\r\n", tx_paquet.data);
+			tx_paquet.dpan[0]=0x0D;tx_paquet.dpan[1]=0xF0;			// Dest PAN is 0xF00D
+			tx_paquet.span[0]=0x0D;tx_paquet.span[1]=0xF0;			// Dest PAN is 0xF00D
+			memset(tx_paquet.smac,0x00,8);tx_paquet.smac[0]=NODE_ID;	// Dest MAC  is  00:00:00:00:00:00:00:<nodeid>
+			memset(tx_paquet.dmac,0x00,8);tx_paquet.dmac[0]=0x01;		// Dest MAC  is  00:00:00:00:00:00:00:01
+
+
             if (paquet2packet( &tx_paquet,txp)){
+				packet_dump(txp); 
                 tx_packet(txp);
                 cntr_msg_sent++;
             }

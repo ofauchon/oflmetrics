@@ -50,16 +50,15 @@ int8_t read_config(config_t *t)
         }
 
         t->signature[0]=buf[0];t->signature[1]=buf[1];        
-        t->smac[3]=buf[2];t->smac[2]=buf[3];
-        t->smac[1]=buf[4];t->smac[0]=buf[5];
-        t->radiochan=buf[6];
-        t->txpower=buf[7];
-        t->capa[0]=buf[8];
-        t->capa[1]=buf[9];
+		memcpy((uint8_t*)t->smac, buf+2,8);
+        t->radiochan=buf[10];
+        t->txpower=buf[11];
+        t->capa[0]=buf[12];
+        t->capa[1]=buf[13];
         // Secure Key 
-        memcpy( (uint8_t*)(buf+10),t->securekey,8);
-        t->low_uptime_flag = buf[18];
-        t->low_uptime_counter = buf[19];
+        memcpy( (uint8_t*)(buf+14),t->securekey,8);
+        t->low_uptime_flag = buf[22];
+        t->low_uptime_counter = buf[23];
         return 1; 
 }
 
@@ -71,20 +70,17 @@ int8_t write_config(config_t *t)
         nvmType_t type;
         nvmErr_t err; 
         uint8_t buf[NVM_CONFIG_SZ];
+
         buf[0]=t->signature[0]; buf[1]=t->signature[0];  // SET CONFIG SIGNATURE
+		memcpy((uint8_t*)buf+2, t->smac,8);
+        buf[10]=t->radiochan;
+        buf[11]=t->txpower;
+        buf[12]=t->capa[0]; 
+        buf[13]=t->capa[1]; 
+        memcpy( (uint8_t*)(buf+14),t->securekey,8);
+        buf[22]=t->low_uptime_flag;
+        buf[23]=t->low_uptime_counter;
 
-        buf[2]=t->smac[3]; buf[3]=t->smac[1];
-        buf[4]=t->smac[1]; buf[5]=t->smac[0]; 
-
-        buf[6]=t->radiochan;
-        buf[7]=t->txpower;
-        buf[8]=t->capa[0]; 
-        buf[9]=t->capa[1]; 
-
-        buf[18]=t->low_uptime_flag;
-        buf[19]=t->low_uptime_counter;
-
-        memcpy( (uint8_t*)(buf+10),t->securekey,8);
 
         err = nvm_detect(gNvmInternalInterface_c, &type);
         if (err) return -1;  
@@ -103,7 +99,8 @@ void default_config(config_t *myconfig)
     // Signature ()
             myconfig->signature[0]=0xF0; myconfig->signature[1]=0x0F; 	// 0xF00F when present
     // Mac address
-            myconfig->smac[0]=0x00;myconfig->smac[1]=0x00;myconfig->smac[2]=0x00;myconfig->smac[3]=DEFAULT_NODENO;
+			memset(myconfig->smac,8,0);
+            myconfig->smac[7]=DEFAULT_NODENO;
 	// Power 0x12
             myconfig->txpower=0x12;
 	// Channel 0 
@@ -126,7 +123,8 @@ void dump_config(config_t myconfig)
     DBG("- signature: 0x%02X%02X\r\n", myconfig.signature[0] ,myconfig.signature[1] );
     DBG("- txpower: 0x%02X, radiochan: 0x%02X\r\n", myconfig.txpower ,myconfig.radiochan );
     DBG("- low_uptime_flag: 0x%02X, low_uptime_counter: 0x%02X\r\n", myconfig.low_uptime_flag ,myconfig.low_uptime_counter );
-    DBG("- smac:0x%02X%02X%02X%02X\r\n capa:0x%02X%02X", myconfig.smac[0], myconfig.smac[1],myconfig.smac[2],myconfig.smac[3], myconfig.capa[0], myconfig.capa[1]);
+    DBG("- span:0x%02X%02X\r\n", myconfig.span[0], myconfig.span[1]);
+    DBG("- smac:0x%02X%02X%02X%02X%02X%02X%02X%02X\r\n capa:0x%02X%02X", myconfig.smac[0], myconfig.smac[1],myconfig.smac[2],myconfig.smac[3], myconfig.smac[4], myconfig.smac[5],myconfig.smac[6],myconfig.smac[7],myconfig.capa[0], myconfig.capa[1]);
     DBG("- securekey:0x");
     int i; 
     for (i=0;i<7;i++){

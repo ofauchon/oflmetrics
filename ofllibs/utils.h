@@ -20,16 +20,17 @@
 Configuration ib NVR
 NVR @ offset 0x1f000
 
- sig         smac    txpower radiochan capabilities  reserved       securekey (8)
-|   |  |---------|   |         |           |       |             |--------------|
-XX XX  XX XX XX XX   XX        XX          XX      XX            XX ... 32 ... XXXX
+ sig         smac               txpower radiochan capabilities  reserved       securekey (8)
+|   |  |---------------------|   |         |           |       |             |--------------|
+XX XX  XX XX XX XX XX XX XX XX   XX        XX          XX      XX            XX ... 32 ... XXXX
 */
  
 
 /* PACKET STUFF */
 typedef struct {
 	uint8_t		signature[2];   	// F00F when eeprom contains data
-        uint8_t         smac[4];		// ID (MAC) of node 
+        uint8_t         smac[8];		// ID (MAC) of node 
+        uint8_t         span[2];		// ID (MAC) of node 
         uint8_t         txpower;		// txpower
         uint8_t         radiochan;		// Current radio channel 
         uint8_t         capa[2];		// Capabilities
