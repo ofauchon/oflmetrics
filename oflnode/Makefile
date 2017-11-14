@@ -1,10 +1,10 @@
-CFLAGS := $(CFLAGS) -DNODE_ID=0x22
+CFLAGS := $(CFLAGS) -DNODE_ID=0x99
 BOARD ?= redbee-econotag
 #BOARD ?= m12
 PORT ?=/dev/ttyUSB1
 
 # Check prerequisite (
-MC1322X=/home/olivier/dev/oflmetrics/libmc1322x
+MC1322X=../../libmc1322x
 MC1322X_LDR=$(MC1322X)/tools/mc1322x-load.pl
 MC1322X_FLA=$(MC1322X)/tests/flasher_$(BOARD).bin
 MC1322X_BBMC=$(MC1322X)/tools/ftditools/bbmc
@@ -18,7 +18,8 @@ export PATH := /home/olivier/CodeSourcery/Sourcery_G++_Lite/bin/:$(PATH)
 # all off the common objects for each target
 # a COBJ is made for EACH board and goes the obj_$(BOARD)_board directory
 # board specific code is OK in these files
-COBJS :=  libs/utils.o libs/utils-paquet.o  libs/xtea.o libs/ds1820.o libs/crc8.o
+#COBJS :=  libs/utils.o libs/utils-paquet.o  libs/xtea.o libs/ds1820.o libs/crc8.o libs/bme280.o
+COBJS :=  libs/utils.o libs/utils-paquet.o  libs/xtea.o libs/ds1820.o libs/crc8.o  libs/i2c_bme280.o
 
 SRC := 
 

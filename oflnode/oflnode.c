@@ -29,6 +29,7 @@ You should have received a copy of the GNU General Public License
 
 #include "libs/config.h"
 #include "libs/ds1820.h"
+#include "libs/i2c_bme280.h"
 #include "libs/utils.h"
 #include "libs/utils-paquet.h"
 
@@ -416,6 +417,13 @@ TODO: rewrite this shit
     // Init radio
     rad_init();
 
+	// Detect bme280 and read calibration if needed
+	uint8_t bme280_presence; 
+	i2c_enable();
+ 	bme280_presence=detect_bme();
+	if (bme280_presence) read_calibration_data(); 
+	i2c_disable(); 
+
     while(1){
 
         rad_on();
@@ -423,8 +431,9 @@ TODO: rewrite this shit
         memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Zero TX message buffer 
         report_err=0; 
 
-        if ( myconfig.capa[0] & CAPA_TEMP ){
-			// Early ds1820 power so it's operationnal for measurement later
+		// Early ds1820 power so it's operationnal for measurement later (if no BME280 detected)
+        if ( !bme280_presence && myconfig.capa[0] & CAPA_TEMP ){
+			DBG("!!! Enabling ds1820\r\n");
             ds1820_start();
 		}
 
@@ -437,7 +446,7 @@ TODO: rewrite this shit
         }
 
         // Add temperature information if node has capability
-        if ( myconfig.capa[0] & CAPA_TEMP ) 
+        if ( !bme280_presence && myconfig.capa[0] & CAPA_TEMP ) 
         {
             DBG("# m:Processing CAPA_TEMP\r\n");
             uint8_t  m_cel, m_cel_frac, m_cel_sign;
@@ -457,9 +466,21 @@ TODO: rewrite this shit
                 report_err=12; 
             }
             ds1820_stop(); // Don't forget to shut down the ds1820 
-
-
         }
+
+        if ( bme280_presence){
+			int16_t temp=0;
+			uint16_t humi=0;
+			uint16_t pres=0;
+            i2c_enable();
+            temp = bmx280_read_temperature();
+            pres = bmx280_read_pressure();
+            humi = bme280_read_humidity();
+            i2c_disable();
+			sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%04d;PRESS:%04d;HUMI:%04d;", temp,pres,humi); 
+		} 
+
+
 
         // Add light level information if node has capability
         if ( myconfig.capa[0] & CAPA_LIGHT ) {
