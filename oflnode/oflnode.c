@@ -477,7 +477,10 @@ TODO: rewrite this shit
             pres = bmx280_read_pressure();
             humi = bme280_read_humidity();
             i2c_disable();
-			sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%04d;PRESS:%04d;HUMI:%04d;", temp,pres,humi); 
+			sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%c%d.%02d;PRESS:%04d;HUMI:+%d.%02d;", 
+                        temp > 0 ? '+' : '-',
+                        temp/100, temp%100,
+						pres,humi/100, humi%100); 
 		} 
 
 
