@@ -6,8 +6,7 @@
 #include <board.h>
 #include <i2c.h>
 
-#define TRACEME 1
-
+// #define TRACEME 1
 
 #ifdef TRACEME 
 #include <stdio.h>

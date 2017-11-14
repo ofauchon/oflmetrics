@@ -4,6 +4,7 @@
 #include <i2c.h>
 
 #include "i2c_bme280.h"
+#include "utils.h"
 
 //#include <uinstd.h>
 /* 
