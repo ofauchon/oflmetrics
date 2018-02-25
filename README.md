@@ -4,7 +4,7 @@ OFLmetrics
 # Introduction
 
 This project provides code for running a simple network of sensors, based on MC1322x hardware (802.15.4 protocol)
-I love simple things, so it's very low level ( Have a look at Contiki if you want an embedded OS )
+It's very low level: just a simple C code main() function and timers... Keep It Simple, Stupid !
 
 It's open-source licensed, so please contribute !
 
@@ -52,9 +52,8 @@ I'll try to write some detailed documentation soon.
 
 # Hardware 
 
-I use econotags v1/v2, Redbee, M12. 
-Please visit http://redwirellc.com to order 
-28/07/2016 Update: redwirellc.com seems down, no idea where to buy the boards now :-(
+- I use econotags v1/v2, Redbee, M12. 
+- MC1322x chipset familly is deprecated. Please tell me if you use this code on other chips.
 
 # Source code layout:
 
@@ -66,15 +65,14 @@ Please visit http://redwirellc.com to order
 # Notes
 
 - No warranty, use at your own risk
-- Sorry for the bugs you may find
 - Please tell me if you do something useful with this code. 
-- I don't sell hardware (anymore).
-- Contributions welcome
+- I don't sell hardware, sorry ! 
+- Contributions, ideas, contributions,  welcome
 
 
 # Q&A 
 
-Q: I get 'make: arm-none-eabi-gcc: Command not found' when 'make'
-A: Unpack arm compiler in arm-2008q3, then add arm-2008q3/bin to your path
+- Q: I get 'make: arm-none-eabi-gcc: Command not found' when 'make'
+- A: Unpack arm compiler in arm-2008q3, then add arm-2008q3/bin to your path
 
 
