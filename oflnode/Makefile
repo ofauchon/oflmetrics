@@ -23,9 +23,8 @@ COBJS :=  libs/utils.o libs/utils-paquet.o  libs/xtea.o libs/ds1820.o libs/crc8.
 
 SRC := 
 
-
 # all of the target programs to build
-TARGETS := 
+TARGETS :=
 
 # these targets are built with space reserved for variables needed by ROM services
 # this space is initialized with a rom call to rom_data_init
@@ -69,6 +68,6 @@ flash:
 debug: 
 	 openocd -f interface/ftdi/redbee-econotag.cfg -f target/mc13224v.cfg
 	
-
-
+term:
+	 picocom  /dev/ttyUSB1 -b 115200
 

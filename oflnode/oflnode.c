@@ -20,12 +20,15 @@ You should have received a copy of the GNU General Public License
 
 #include <string.h>
 #include <stdio.h>
+//#include <stdlib.h>
 
+#include <teleinfo.h>
 /*
  * 104 => Enhance ds18x20 measure
+ * 105 => bme280 negative temperature fix
  */
 
-#define FW_VER 104
+#define FW_VER 105
 
 #include "libs/config.h"
 #include "libs/ds1820.h"
@@ -349,6 +352,7 @@ void main(void) {
     // UART
     if (DODEBUG) uart_init(UART1, SERIAL_SPEED);
     DBG("#m: OFLnode start\r\n");
+    DBG("#m: f/w version: %u \r\n", FW_VER);
 
     // uController init
     trim_xtal();
@@ -431,7 +435,7 @@ TODO: rewrite this shit
         memset(tx_paquet.data,0,PAQUET_MAX_DATASIZE); // Zero TX message buffer 
         report_err=0; 
 
-		// Early ds1820 power so it's operationnal for measurement later (if no BME280 detected)
+	// Early ds1820 power so it's operationnal for measurement later (if no BME280 detected)
         if ( !bme280_presence && myconfig.capa[0] & CAPA_TEMP ){
 			DBG("!!! Enabling ds1820\r\n");
             ds1820_start();
@@ -476,11 +480,14 @@ TODO: rewrite this shit
             temp = bmx280_read_temperature();
             pres = bmx280_read_pressure();
             humi = bme280_read_humidity();
+
+	    int16_t temp_centi;
+	    temp_centi= temp>=0 ? temp%100 : (-temp)%100;
+ 
             i2c_disable();
-			sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%c%d.%02d;PRESS:%04d;HUMI:+%d.%02d;", 
-                        temp > 0 ? '+' : '-',
-                        temp/100, temp%100,
-						pres,humi/100, humi%100); 
+		sprintf((char*)tx_paquet.data + strlen((char*)tx_paquet.data), "TEMP:%d.%02d;PRESS:%04d;HUMI:+%d.%02d;",
+                        temp/100, temp_centi,
+			pres,humi/100, humi%100);
 		} 
 
 
